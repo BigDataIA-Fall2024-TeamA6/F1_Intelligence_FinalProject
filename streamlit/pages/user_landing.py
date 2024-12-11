@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 from streamlit.components.v1 import html
+import mysql.connector
 
 # Set page config
 st.set_page_config(
@@ -8,6 +9,117 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"  
 )
+
+def get_race_calendar():
+    try:
+        # Establish connection
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        
+        # Create cursor and execute query
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                `Grand Prix`,
+                Venue,
+                Dates
+            FROM race_calendar
+            ORDER BY STR_TO_DATE(Dates, '%M %d-%d')
+        """)
+        
+        # Fetch all results
+        results = cursor.fetchall()
+        
+        # Transform results into a dictionary for a DataFrame
+        race_calendar = {
+            "Grand Prix": [],
+            "Venue": [],
+            "Dates": []
+        }
+        
+        for row in results:
+            race_calendar["Grand Prix"].append(row['Grand Prix'])
+            race_calendar["Venue"].append(row['Venue'])
+            race_calendar["Dates"].append(row['Dates'])
+            
+        cursor.close()
+        cnx.close()
+        return race_calendar
+        
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
+
+
+def get_driver_standings():
+    try:
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT Pos, Driver, Nationality, Car, Pts
+            FROM driver_standings
+            ORDER BY CAST(Pos AS UNSIGNED)
+        """)
+        results = cursor.fetchall()
+        driver_standings = {
+            "Pos": [],
+            "Driver": [],
+            "Nationality": [],
+            "Car": [],
+            "Pts": []
+        }
+        for row in results:
+            driver_standings["Pos"].append(row['Pos'])
+            driver_standings["Driver"].append(row['Driver'])
+            driver_standings["Nationality"].append(row['Nationality'])
+            driver_standings["Car"].append(row['Car'])
+            driver_standings["Pts"].append(row['Pts'])
+        cursor.close()
+        cnx.close()
+        return driver_standings
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
+
+def get_constructor_standings():
+    try:
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT Pos, Team, Pts
+            FROM constructor_standings
+            ORDER BY CAST(Pos AS UNSIGNED)
+        """)
+        results = cursor.fetchall()
+        constructor_standings = {
+            "Pos": [],
+            "Team": [],
+            "Pts": []
+        }
+        for row in results:
+            constructor_standings["Pos"].append(row['Pos'])
+            constructor_standings["Team"].append(row['Team'])
+            constructor_standings["Pts"].append(row['Pts'])
+        cursor.close()
+        cnx.close()
+        return constructor_standings
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
 
 # Add custom CSS
 def add_css():
@@ -120,7 +232,9 @@ def user_landing_page():
     add_css()  # Apply CSS styling
 
     st.title("🏎️ F1 User Dashboard")
-
+    if "username" in st.session_state and st.session_state.user_type == "user":
+        st.write(f"Welcome {st.session_state.username}!")
+        
     co1, co2, spacer, co3,  co4 = st.columns([1, 2, 4, 1, 1])
     with co1:
         if st.button('🪪 Profile'):
@@ -152,105 +266,71 @@ def user_landing_page():
             st.subheader("🏁 Race Calendar")
 
             # Data for the race calendar
-            race_calendar = {
-                "Grand Prix": [
-                    "Bahrain", "Saudi Arabian", "Australian", "Japanese", "Chinese",
-                    "Miami", "Emilia Romagna", "Monaco", "Canadian", "Spanish",
-                    "Austrian", "British", "Hungarian", "Belgian", "Dutch",
-                    "Italian", "Azerbaijan", "Singapore", 
-                    "United States (Austin)", "Mexico City", "São Paulo",
-                    "Las Vegas", "Qatar", "Abu Dhabi"
-                ],
-                "Circuit": [
-                    "Bahrain International Circuit", "Jeddah Corniche Circuit", "Albert Park Circuit", "Suzuka International Racing Course", "Shanghai International Circuit",
-                    "Miami International Autodrome", "Autodromo Enzo e Dino Ferrari", "Circuit de Monaco", "Circuit Gilles Villeneuve", "Circuit de Barcelona-Catalunya",
-                    "Red Bull Ring", "Silverstone Circuit", "Hungaroring", "Circuit de Spa-Francorchamps", "Circuit Zandvoort",
-                    "Autodromo Nazionale Monza", "Baku City Circuit", "Marina Bay Street Circuit",
-                    "Circuit of the Americas", "Autódromo Hermanos Rodríguez", "Autódromo José Carlos Pace",
-                    "Las Vegas Strip Circuit", "Lusail International Circuit", "Yas Marina Circuit"
-                ],
-                "Qualifying": [
-                    "March 2", "March 9", "March 23", "April 6", "April 20",
-                    "May 4", "May 18", "May 25", "June 8", "June 22",
-                    "June 29", "July 6", "July 20", "July 27", "August 24",
-                    "August 31", "September 14", "September 21",
-                    "October 19", "October 26", "November 2", "November 22",
-                    "November 30", "December 7"
-                ],
-                "Race": [
-                    "March 3", "March 10", "March 24", "April 7", "April 21",
-                    "May 5", "May 19", "May 26", "June 9", "June 23",
-                    "June 30", "July 7", "July 21", "July 28", "August 25",
-                    "September 1", "September 15", "September 22",
-                    "October 20", "October 27", "November 3", "November 23",
-                    "December 1", "December 8"
-                ]
-            }
+            race_calendar = get_race_calendar()
+    
+            if race_calendar:
+                # Convert to DataFrame
+                df = pd.DataFrame(race_calendar)
 
-            # Convert to DataFrame
-            df = pd.DataFrame(race_calendar)
+                df.rename(
+                    columns={
+                        "Grand Prix": "Race",
+                        "Venue": "Race Track",
+                        "Dates": "Race Dates"
+                    },
+                    inplace=True
+                )
 
-            # Display the table
-            st.table(df)
+                # Display the table
+                st.table(df)
 
         # Tab 2: Driver Standings
         with tab2:
             st.subheader("🏎️ Driver Standings")
 
-            # Driver standings data
-            driver_standings = {
-                "Pos": list(range(1, 24)),
-                "Driver": [
-                    "Max Verstappen", "Lando Norris", "Charles Leclerc", "Oscar Piastri", "Carlos Sainz",
-                    "George Russell", "Lewis Hamilton", "Sergio Perez", "Fernando Alonso", "Nico Hulkenberg",
-                    "Pierre Gasly", "Yuki Tsunoda", "Lance Stroll", "Esteban Ocon", "Kevin Magnussen",
-                    "Alexander Albon", "Daniel Ricciardo", "Oliver Bearman", "Franco Colapinto", "Zhou Guanyu",
-                    "Liam Lawson", "Valtteri Bottas", "Logan Sargeant"
-                ],
-                "Nationality": [
-                    "NED", "GBR", "MON", "AUS", "ESP", "GBR", "GBR", "MEX", "ESP", "GER",
-                    "FRA", "JPN", "CAN", "FRA", "DEN", "THA", "AUS", "GBR", "ARG", "CHN",
-                    "NZL", "FIN", "USA"
-                ],
-                "Car": [
-                    "Red Bull Racing Honda RBPT", "McLaren Mercedes", "Ferrari", "McLaren Mercedes", "Ferrari",
-                    "Mercedes", "Mercedes", "Red Bull Racing Honda RBPT", "Aston Martin Aramco Mercedes", "Haas Ferrari",
-                    "Alpine Renault", "RB Honda RBPT", "Aston Martin Aramco Mercedes", "Alpine Renault", "Haas Ferrari",
-                    "Williams Mercedes", "RB Honda RBPT", "Haas Ferrari", "Williams Mercedes", "Kick Sauber Ferrari",
-                    "RB Honda RBPT", "Kick Sauber Ferrari", "Williams Mercedes"
-                ],
-                "Pts": [
-                    429, 349, 341, 291, 272, 235, 211, 152, 68, 37,
-                    36, 30, 24, 23, 16, 12, 12, 7, 5, 4,
-                    4, 0, 0
-                ]
-            }
+            driver_standings = get_driver_standings()
 
-            # Convert to DataFrame
-            df = pd.DataFrame(driver_standings).reset_index(drop=True)
-            st.table(df)
+            if driver_standings:
 
-            with tab3:
-                st.subheader("🏆 Constructor Standings")
+                # Convert to DataFrame
+                df1 = pd.DataFrame(driver_standings)
 
-                # Constructor standings data
-                constructor_standings = {
-                    "Pos": list(range(1, 11)),
-                    "Team": [
-                        "McLaren Mercedes", "Ferrari", "Red Bull Racing Honda RBPT", "Mercedes",
-                        "Aston Martin Aramco Mercedes", "Alpine Renault", "Haas Ferrari",
-                        "RB Honda RBPT", "Williams Mercedes", "Kick Sauber Ferrari"
-                    ],
-                    "Pts": [
-                        640, 619, 581, 446, 92, 59, 54, 46, 17, 4
-                    ]
-                }
+                df1.rename(
+                    columns={
+                        "Pos": "Position",
+                        "Driver": "Driver Name",
+                        "Nationality":"Nationality",
+                        "Car": "Constructor Team",
+                        "Pts": "Points"
+                    },
+                    inplace=True
+                )
+
+                # Display the table
+                st.table(df1)    
+
+        with tab3:
+            st.subheader("🏆 Constructor Standings")
+
+            constructor_standings = get_constructor_standings()
+
+            if constructor_standings:
 
                 # Convert to DataFrame
                 df_constructors = pd.DataFrame(constructor_standings)
 
+                df_constructors.rename(
+                    columns={
+                        "Pos": "Position",
+                        "Team": "Constructor Team",
+                        "Pts": "Points"
+                    },
+                    inplace=True
+                )
+
                 # Display the table
                 st.table(df_constructors)
+
 
             
     with col2:

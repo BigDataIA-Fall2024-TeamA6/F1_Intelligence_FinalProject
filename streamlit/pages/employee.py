@@ -1,6 +1,64 @@
 import streamlit as st
 import pandas as pd
-import json
+import mysql
+
+def fetch_login_data():
+    try:
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                id, 
+                fname, 
+                lname, 
+                username, 
+                password, 
+                user_type, 
+                favorite_team, 
+                created_at
+            FROM login
+        """)
+
+        # Fetch all results
+        results = cursor.fetchall()
+
+        # Transform results into a dictionary for a DataFrame
+        login_data = {
+            "id": [],
+            "fname": [],
+            "lname": [],
+            "username": [],
+            "password": [],
+            "user_type": [],
+            "favorite_team": [],
+            "created_at": []
+        }
+
+        for row in results:
+            login_data["id"].append(row['id'])
+            login_data["fname"].append(row['fname'])
+            login_data["lname"].append(row['lname'])
+            login_data["username"].append(row['username'])
+            login_data["password"].append(row['password'])
+            login_data["user_type"].append(row['user_type'])
+            login_data["favorite_team"].append(row['favorite_team'] if row['favorite_team'] is not None else "")
+            login_data["created_at"].append(row['created_at'])
+
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+
+        return login_data
+        
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
+        
 
 def main():
     st.set_page_config(page_title="F1 Employee Dashboard", initial_sidebar_state="collapsed", layout="wide" )
@@ -65,12 +123,18 @@ def main():
     # Sample users data
     with tab1:
         st.header("User Directory")
-        users_data = {
-            'Name': ['Max Verstappen', 'Lewis Hamilton', 'Charles Leclerc'],
-            'Username': ['maxv33', 'lewish44', 'charleslec16'],
-            'Favorite Team': ['Red Bull Racing', 'Mercedes AMG', 'Ferrari']
-        }
+
+        users_data = fetch_login_data()
         users_df = pd.DataFrame(users_data)
+        users_df.rename(
+                    columns={
+                        "Grand Prix": "Race",
+                        "Venue": "Race Track",
+                        "Dates": "Race Dates"
+                    },
+                    inplace=True
+                )
+
         st.dataframe(users_df, use_container_width=True)
 
     # Transactions data
