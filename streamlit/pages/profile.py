@@ -1,4 +1,27 @@
 import streamlit as st
+import mysql.connector
+
+def get_user_info(username):
+    try:
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, fname, lname, username, user_type, favorite_team, created_at
+            FROM login
+            WHERE username = %s
+        """, (username,))
+        user_info = cursor.fetchone()
+        cursor.close()
+        cnx.close()
+        return user_info
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
 
 def user_profile_page():
     st.markdown(
@@ -83,6 +106,7 @@ def user_profile_page():
         """,
         unsafe_allow_html=True
     )
+    user_info = get_user_info(st.session_state.username)
 
     # Header with profile summary
     col1, col2 = st.columns([1, 2])
@@ -90,40 +114,42 @@ def user_profile_page():
         st.image("https://logodownload.org/wp-content/uploads/2016/11/formula-1-logo-7.png", width=250)
     with col2:
         st.title("User Profile 🏎️")
-        st.write("Welcome back, Max Verstappen!")
 
     # Create tabs
     tab1, tab2, tab3 = st.tabs(["🪪 Profile Info", "🎟️ F1 Passes", "📋 Support Tickets"])
 
-    with tab1:
-        st.header("Personal Information")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("""
-            **Member Since:** 2024\n
-            **Email:** max@f1racing.com \n
-            **Phone:** +1 234 567 8900
-            """)
-        with col2:
-            st.markdown("""
-            **Favorite Circuit:** Spa-Francorchamps\n
-            **Favorite Team:** Red Bull Racing\n
-            **Preferred Seat:** Grandstand
-            """)
+    if user_info:
+        with tab1:
+            st.header("Personal Information")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"""
+                **Member Since:** {user_info['created_at'].strftime('%Y-%m-%d')}\n
+                **Email:** {user_info['username']}\n
+                **Name:** {user_info['fname']} {user_info['lname']}
+                """)
+            with col2:
+                st.markdown(f"""
+                **Favorite Team:** {user_info['favorite_team']}\n
+                **User Type:** {user_info['user_type']}\n
+                **User ID:** {user_info['id']}
+                """)
+    else:
+        st.error("Failed to retrieve user information.")
 
-        co1, co2 = st.columns([1,1])
-        with co1:
-            if st.button("Home", use_container_width=True):
-                st.switch_page("pages/user_landing.py")   
+    co1, co2 = st.columns([1,1])
+    with co1:
+        if st.button("Home", use_container_width=True):
+            st.switch_page("pages/user_landing.py")   
 
-        with co2:
-            if st.button("Logout"):
-                # Clear session state
-                st.session_state.messages = []
-                # Add confirmation message
-                st.warning('Successfully logged out')
-                # Rerun the app to reset the state
-                st.switch_page("pages/login.py")
+    with co2:
+        if st.button("Logout"):
+            # Clear session state
+            st.session_state.messages = []
+            # Add confirmation message
+            st.warning('Successfully logged out')
+            # Rerun the app to reset the state
+            st.switch_page("pages/login.py")
 
     with tab2:
         st.header("My F1 Passes")
