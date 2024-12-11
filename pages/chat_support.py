@@ -16,7 +16,7 @@ def get_ai_response(question):
     ai_agent = get_graph()
     state = {
         "input": question,
-        "chat_history": [],
+        # "chat_history": [],
         "intermediate_steps": []
     }
     
