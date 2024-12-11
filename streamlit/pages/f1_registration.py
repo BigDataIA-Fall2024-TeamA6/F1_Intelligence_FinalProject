@@ -4,7 +4,11 @@ import bcrypt
 import re
 
 # Move set_page_config to the top of the script
-st.set_page_config(page_title="F1 User Registration", page_icon="🏎️")
+st.set_page_config(
+    page_title="F1 User Registration", 
+    page_icon="🏎️",
+    initial_sidebar_state="collapsed"  
+)
 
 # Connect to the AWS RDS MySQL instance
 def create_connection():
@@ -88,18 +92,19 @@ def create_account_page():
     st.title("🏁 Create New F1 User Account")
 
     # F1 Teams List
-    f1_teams = [
-        "Red Bull Racing",
-        "Ferrari",
-        "Mercedes",
-        "McLaren",
-        "Alpine",
-        "Aston Martin",
-        "Alfa Romeo",
-        "Haas F1 Team",
-        "AlphaTauri",
-        "Williams"
-    ]
+    f1_teams = {
+        "red-bull-racing",
+        "ferrari",
+        "mercedes",
+        "mclaren",
+        "alpine",
+        "aston-martin",
+        "alfa-romeo",
+        "haas",
+        "rb",
+        "williams",
+        "kick-sauber"
+    }
 
     # Input fields for account creation
     first_name = st.text_input("First Name")
