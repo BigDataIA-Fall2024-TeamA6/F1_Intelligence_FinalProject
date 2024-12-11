@@ -1,28 +1,33 @@
 import streamlit as st
-import time
+from db import get_connection
+import os
+from dotenv import load_dotenv
+from research_agent import get_graph
 
-def get_ai_response(question):
+load_dotenv()
+
+api_key = os.getenv("OPENAI_API_KEY")
+
+
+def get_ai_response(prompt):
     """
-    Simulated AI response - Replace this with your actual AI code integration.
+    The user entered prompt is sent to the AI Agent which evaluates the prompt and calls the tool accordingly
     """
-    value = """
-    ## F1 Racing Insights
+    ai_agent = get_graph()    
+    output = ai_agent.invoke({
+        "input": prompt
+        # "chat_history": []
+        })
     
-    F1 racing is known for its high-speed thrills and cutting-edge technology. Here are some key aspects:
-
-    1. **Top Teams**: Mercedes, Red Bull Racing, and Ferrari are consistently among the top performers[1].
-    2. **Race Strategy**: Tire management and pit stop timing are crucial for success.
-    3. **Advanced Technology**: F1 cars feature state-of-the-art aerodynamics and hybrid power units.
-    4. **Global Championship**: The F1 season includes races across various countries and continents.
-    5. **Driver Skills**: F1 drivers need exceptional reflexes, physical fitness, and mental focus.
-
-    Remember, the sport is constantly evolving, with new regulations and technological advancements shaping each season.
-    """
-    return value
+    return output
 
 def initialize_session_state():
     if 'messages' not in st.session_state:
         st.session_state.messages = []
+    
+    
+
+db = get_connection()
 
 def main():
     initialize_session_state()
@@ -120,9 +125,11 @@ def main():
 
                 with st.chat_message("assistant"):
                     with st.spinner("Analyzing telemetry..."):
+                        
                         response = get_ai_response(prompt)
                         st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
+
 
 if __name__ == "__main__":
     st.set_page_config(
