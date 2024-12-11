@@ -10,16 +10,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed"  
 )
 
-def get_race_calendar():
-    try:
-        # Establish connection
-        cnx = mysql.connector.connect(
+cnx = mysql.connector.connect(
             host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
             user="admin",
             password="amazonrds7245",
             database="bdia_team6_finalproject_db"
         )
-        
+
+def get_race_calendar():
+    try:
+        cnx = mysql.connector.connect(
+        host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+        user="admin",
+        password="amazonrds7245",
+        database="bdia_team6_finalproject_db"
+    )
         # Create cursor and execute query
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""
@@ -93,11 +98,11 @@ def get_driver_standings():
 def get_constructor_standings():
     try:
         cnx = mysql.connector.connect(
-            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
-            user="admin",
-            password="amazonrds7245",
-            database="bdia_team6_finalproject_db"
-        )
+        host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+        user="admin",
+        password="amazonrds7245",
+        database="bdia_team6_finalproject_db"
+    )
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""
             SELECT Pos, Team, Pts
@@ -120,6 +125,38 @@ def get_constructor_standings():
     except Exception as e:
         st.error(f"Database connection failed: {e}")
         return None
+
+def fetch_news(team=None):
+    cnx = mysql.connector.connect(
+        host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+        user="admin",
+        password="amazonrds7245",
+        database="bdia_team6_finalproject_db"
+    )
+    cursor = cnx.cursor()
+    
+    try:
+        if team:
+            query = "SELECT team_name, news_title, news_link FROM news_articles WHERE team_name = %s"
+            cursor.execute(query, (team,))
+        else:
+            query = "SELECT team_name, news_title, news_link FROM news_articles"
+            cursor.execute(query)
+        
+        news_data = cursor.fetchall()
+    except mysql.connector.Error as err:
+        if err.errno == 1146:  # Table doesn't exist error
+            st.error("The 'news' table does not exist in the database. Please create the table and try again.")
+            news_data = []
+        else:
+            st.error(f"An error occurred: {err}")
+            news_data = []
+    finally:
+        cursor.close()
+        cnx.close()
+    
+    return news_data
+
 
 # Add custom CSS
 def add_css():
@@ -231,10 +268,22 @@ def add_css():
 def user_landing_page():
     add_css()  # Apply CSS styling
 
+
     st.title("🏎️ F1 User Dashboard")
     if "username" in st.session_state and st.session_state.user_type == "user":
         st.write(f"Welcome {st.session_state.username}!")
-        
+
+    if "favorite_team" not in st.session_state:
+            cursor = cnx.cursor()
+            cursor.execute("SELECT favorite_team FROM login WHERE username = %s", (st.session_state.username,))
+            result = cursor.fetchone()
+            cursor.close()
+            cnx.close()
+            if result:
+                st.session_state.favorite_team = result[0]
+            else:
+                st.session_state.favorite_team = None
+
     co1, co2, spacer, co3,  co4 = st.columns([1, 2, 4, 1, 1])
     with co1:
         if st.button('🪪 Profile'):
@@ -334,55 +383,53 @@ def user_landing_page():
 
             
     with col2:
-        st.subheader("📰 Latest News")
-        news_articles = [
-            {
-                "image": "https://via.placeholder.com/300x200.png?text=F1+News",
-                "title": "Hamilton Secures Pole Position in Thrilling Qualifying Session",
-                "url": "#"
-            },
-            {
-                "image": "https://media.formula1.com/image/upload/f_auto,c_limit,w_1440,q_auto/f_auto,c_fill,q_auto,w_1320,t_16by9Centre,g_faces,ar_16:9/fom-website/2023/Red%20Bull/RB20%20launch/SI202402140459_hires_jpeg_24bit_rgb",
-                "title": "Red Bull Unveils Revolutionary New Aerodynamic Package",
-                "url": "#"
-            },
-            {
-                "image": "https://media.formula1.com/image/upload/f_auto,c_limit,w_960,q_auto/f_auto/q_auto/content/dam/fom-website/manual/Misc/2022manual/WinterFebruary/Ferrari/F1-75_JPG_SPONSOR_00004",
-                "title": "Ferrari's Strategy Masterclass Leads to Double Podium Finish",
-                "url": "#"
-            },
-            {
-                "image": "https://via.placeholder.com/300x200.png?text=F1+News",
-                "title": "Rookie Driver Makes Waves with Impressive Debut Performance",
-                "url": "#"
-            }
-        ]
+        st.subheader("📰 Latest News for Your Favorite Team")
 
-        for i in range(0, len(news_articles), 2):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                article = news_articles[i]
-                st.markdown(f'''
-                <div class="news-card">
-                    <img src="{article['image']}" alt="News Image" class="news-card-image">
-                    <div class="news-card-content">
-                        <h3 class="news-card-title"><a href="{article['url']}">{article['title']}</a></h3>
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
-            
-            if i + 1 < len(news_articles):
-                with col2:
-                    article = news_articles[i + 1]
-                    st.markdown(f'''
-                    <div class="news-card">
-                        <img src="{article['image']}" alt="News Image" class="news-card-image">
-                        <div class="news-card-content">
-                            <h3 class="news-card-title"><a href="{article['url']}">{article['title']}</a></h3>
+        if st.session_state.favorite_team:
+            # Fetch news data for the user's favorite team
+            news_data = fetch_news(st.session_state.favorite_team)
+
+            if news_data:
+                # Format the news data
+                news_articles = [
+                    {
+                        "image": f"https://via.placeholder.com/300x200.png?text={st.session_state.favorite_team}",
+                        "title": news_title,
+                        "url": news_link
+                    }
+                    for _, news_title, news_link in news_data
+                ]
+
+                # Display the news articles in a grid layout
+                for i in range(0, len(news_articles), 2):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        article = news_articles[i]
+                        st.markdown(f'''
+                        <div class="news-card">
+                            <img src="{article['image']}" alt="News Image" class="news-card-image">
+                            <div class="news-card-content">
+                                <h3 class="news-card-title"><a href="{article['url']}">{article['title']}</a></h3>
+                            </div>
                         </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
+                        ''', unsafe_allow_html=True)
+                    
+                    if i + 1 < len(news_articles):
+                        with col2:
+                            article = news_articles[i + 1]
+                            st.markdown(f'''
+                            <div class="news-card">
+                                <img src="{article['image']}" alt="News Image" class="news-card-image">
+                                <div class="news-card-content">
+                                    <h3 class="news-card-title"><a href="{article['url']}">{article['title']}</a></h3>
+                                </div>
+                            </div>
+                            ''', unsafe_allow_html=True)
+            else:
+                st.write(f"No news available for {st.session_state.favorite_team}.")
+        else:
+            st.write("Please set your favorite team in your profile to see team-specific news.")
 
 
 # Run the app
