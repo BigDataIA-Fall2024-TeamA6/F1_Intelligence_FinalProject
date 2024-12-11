@@ -19,6 +19,12 @@ cnx = mysql.connector.connect(
 
 def get_race_calendar():
     try:
+        cnx = mysql.connector.connect(
+        host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+        user="admin",
+        password="amazonrds7245",
+        database="bdia_team6_finalproject_db"
+    )
         # Create cursor and execute query
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""
@@ -91,6 +97,12 @@ def get_driver_standings():
 
 def get_constructor_standings():
     try:
+        cnx = mysql.connector.connect(
+        host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+        user="admin",
+        password="amazonrds7245",
+        database="bdia_team6_finalproject_db"
+    )
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""
             SELECT Pos, Team, Pts
