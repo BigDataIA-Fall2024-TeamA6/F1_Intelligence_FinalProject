@@ -27,7 +27,7 @@ sys.modules['streamlit.components'] = MockStreamlit()
 sys.modules['streamlit.components.v1'] = MagicMock()
 
 # Now import the module to test
-from streamlit.pages.user_landing import (
+from ..pages.user_landing import (
     get_race_calendar, 
     get_driver_standings, 
     get_constructor_standings
