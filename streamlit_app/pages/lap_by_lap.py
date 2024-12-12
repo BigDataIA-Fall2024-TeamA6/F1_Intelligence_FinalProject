@@ -1,98 +1,172 @@
 import streamlit as st
-import pandas as pd
+import boto3
+import json
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
+from datetime import datetime
 import io
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_JUSTIFY, TA_CENTER
-from reportlab.lib.units import inch
-import re
- 
-# Set page config
+from reportlab.lib.enums import TA_CENTER
+
+# Load environment variables
+load_dotenv()
+
+# Initialize OpenAI and S3 Clients
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+s3 = boto3.client('s3')
+
+# Predefined Grand Prix list
+grand_prix_list = [
+    "Bahrain", "Saudi Arabian", "Australian", "Japanese", "Chinese",
+    "Miami", "Emilia Romagna", "Monaco", "Canadian", "Spanish",
+    "Austrian", "British", "Hungarian", "Belgian", "Dutch",
+    "Italian", "Azerbaijan", "Singapore",
+    "United States", "Mexico City", "São Paulo",
+    "Las Vegas", "Qatar", "Abu Dhabi", "Brazilian"
+]
+
+# Streamlit Page Configuration
 st.set_page_config(
     page_title="F1 Lap Analysis",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
- 
-# Custom CSS for dark theme and proper styling
+
+# Custom CSS for styling
 st.markdown("""
     <style>
     /* Dark theme */
     .main {
-        color: white;
+        color: black;
     }
-    
+
     /* Header styling */
     .title {
-        color: white;
+        color: black;
         padding: 1rem 0;
     }
-    
+
     /* Dropdown styling */
     .stSelectbox > div > div {
-        background-color: #2D2D2D;
-        color: white;
-        border: 1px solid #9146FF;
+        background-color: white;
+        color: black;
+        border: 1px solid red;
     }
-    
+
     /* Button styling */
     .stButton > button {
         width: 100%;
         background-color: #FF1801;
-        color: white;
+        color: black;
         border: none;
         padding: 0.5rem;
         margin: 0.5rem 0;
         border-radius: 5px;
     }
-    
+
     .stButton > button:hover {
         background-color: #D10000;
         color: #000000
     }
-    
+
     /* Container styling */
     .visualization-container {
         border: 1px solid #FF1801;
         border-radius: 10px;
         padding: 20px;
     }
+
+    /* Summary text styling */
+    .summary-text {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 16px;
+        line-height: 1.2;
+        overflow-y: auto;
+        max-height: 400px;
+        padding: -10px;
+        color: black;
+    }
+
+    /* Loading spinner */
+    .loading {
+        text-align: center;
+        color: #FF1801;
+        font-size: 18px;
+        margin-top: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
- 
-# Race summary text
-race_summary = """
-### Race Summary: Belgian Grand Prix
- 
-**Race Overview:**
-The Belgian Grand Prix unfolded with strategic pit stops and a strong performance from Red Bull, as they continued their dominant streak in the 2023 season. Max Verstappen secured his eighth consecutive victory, increasing his lead in the driver standings to a formidable 130 points. His win, paired with Sergio Perez's second-place finish, marked Red Bull's first 1-2 finish in a Grand Prix since Miami earlier in the season.
- 
-**Lap-by-Lap Analysis:**
- 
-- **Early Stage:** The race began with drivers focusing on preserving their medium compound tires. The initial laps saw stable positions among the top contenders, with Verstappen maintaining his lead after starting from the grid drop.
- 
-- **Mid-Race Developments:**
-    - Lewis Hamilton, seeking to maximize performance, executed a pit stop to switch from medium to soft tires. This strategic move initially placed him behind Fernando Alonso, though he soon overtook Alonso at La Source.
-    - Ferrari responded to Hamilton's pit stop by bringing in Charles Leclerc, who also switched to soft tires and re-emerged ahead of Hamilton.
-    - Sergio Perez made a second pit stop to switch from mediums to softs, strategically benefiting from the timing as those behind him had just pitted, allowing him to maintain his position.
-    - Fernando Alonso, after building a sufficient gap, pitted for his stop, managing to retain a significant position without losing places.
- 
-- **Key Race Incidents:**
-    - Alexander Albon decided to pit for the final time in the race, exiting a battle he was involved in.
-    - Logan Sargeant received a black-and-white flag for track limits violations, with a warning of a potential time penalty pending further infringements. However, no major on-track collisions or safety car deployments were noted during this period, indicating a relatively incident-free race.
- 
-- **Final Stage and Closing Laps:**
-    - Verstappen came in for a routine pit stop, opting for soft tires while maintaining a comfortable lead over the field.
-    - Hamilton, in pursuit of the fastest lap bonus point, decided to make an additional pit stop late in the race, reverting to medium tires.
-    - Despite concerns over tire degradation, Verstappen's pace remained undeterred, showing strong communication and strategy management with his race engineer, Gianpiero Lambiase.
- 
-**Conclusion:**
-The Belgian GP highlighted Red Bull's continuous dominance, with Verstappen showcasing not just speed but strategic brilliance. His win extends his championship lead, underscoring Red Bull's reliability and performance throughout the season. The race's outcome was a testament to Red Bull's strategic planning, pit stop efficiency, and Verstappen's consistent driving prowess, setting a high bar entering the summer break.
- 
-The strategic plays, especially around tire management and pit operations, influenced the race's dynamic significantly, allowing for positional shifts that were well-executed by top teams, particularly Red Bull and their championship leader, Verstappen.
-"""
- 
+
+# Fetch race data from S3
+@st.cache_data
+def fetch_race_data():
+    try:
+        response = s3.get_object(
+            Bucket=os.getenv('S3_BUCKET_NAME_LAP'),
+            Key='race_data.json'
+        )
+        return json.loads(response['Body'].read().decode('utf-8'))
+    except Exception as e:
+        st.error(f"Error fetching race data: {e}")
+        return {}
+
+# Format summary for consistent output
+def format_summary(summary):
+    formatted_summary = []
+    
+    # Add key highlights
+    formatted_summary.append("### Key Highlights of the Race")
+    formatted_summary.append("")
+    for line in summary.split("\n"):
+        if any(keyword in line.lower() for keyword in ["crash", "flag", "pit"]):
+            formatted_summary.append(f"- {line.strip()}")
+
+    formatted_summary.append("")
+    formatted_summary.append("### Detailed Lap-by-Lap Analysis")
+    formatted_summary.append(summary)
+
+    return "\n".join(formatted_summary)
+
+# Prepare analysis prompt
+def prepare_prompt(data):
+    """
+    Prepares a prompt for race analysis based on key events in the data.
+    Filters comments with specific keywords and structures them into a prompt.
+    """
+    events = [
+        f"- {entry['time']}: {entry['comment']}"
+        for entry in data if "comment" in entry and any(
+            keyword in entry["comment"].lower() for keyword in ["pit", "flag", "crash", "wins"]
+        )
+    ]
+    if not events:
+        return None
+
+    return (
+        "Portion of commentary from the race is provided, provide elaborate lap-wise analysis of the race.\n"
+        + "\n".join(events)
+        + "\nHighlight major events in the race like crashes, flags, and pit stops. Do not mention timestamps. "
+        + "Provide the summary in a structured style. Use your knowledge base to expand on the race details."
+    )
+
+
+# Generate analysis summary
+def generate_summary(prompt):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=700
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error generating summary: {e}"
+
+# Create PDF from the race summary
 def create_pdf(race_summary, selected_year, selected_gp):
     """
     Create a PDF file from the race summary with formatted styling
@@ -162,64 +236,87 @@ def create_pdf(race_summary, selected_year, selected_gp):
     doc.build(content)
     
     return buffer
- 
-# Create two columns with proper ratio
+
+
+
+
+# Main logic
+race_data = fetch_race_data()
+
+if 'race_summary' not in st.session_state:
+    st.session_state['race_summary'] = 'Lap Analysis Will Appear Here'
+if 'analysis_in_progress' not in st.session_state:
+    st.session_state['analysis_in_progress'] = False
+
 col1, col2 = st.columns([1, 3])
- 
+
 with col1:
-    col_home, col_spacer= st.columns([1, 2])
+    col_home, col_spacer = st.columns([1, 2])
     with col_home:
         if st.button(" Home "):
             st.switch_page("pages/user_landing.py")
- 
+
     st.markdown("## Lap by Lap Analysis")
     st.markdown("Select Grand Prix to analyse: ")
- 
-    # Year dropdown
+
     years = list(range(2024, 2020, -1))
     selected_year = st.selectbox("Select Year", years, key="year")
-    
-    # Grand Prix dropdown
-    grand_prix_list = [
-        "Bahrain", "Saudi Arabian", "Australian", "Japanese", "Chinese",
-        "Miami", "Emilia Romagna", "Monaco", "Canadian", "Spanish",
-        "Austrian", "British", "Hungarian", "Belgian", "Dutch",
-        "Italian", "Azerbaijan", "Singapore", 
-        "United States (Austin)", "Mexico City", "São Paulo",
-        "Las Vegas", "Qatar", "Abu Dhabi"
-    ]
-    selected_gp = st.selectbox("Select Grand Prix", grand_prix_list, key="gp")
-    
-    # Action buttons
+    selected_country = st.selectbox("Select Country", grand_prix_list, key="country")
+
     if st.button("Generate Analysis"):
-        st.session_state.generate_clicked = True
-    
+        st.session_state['race_summary'] = 'Generating analysis...'
+        st.session_state['analysis_in_progress'] = True
+
+        selected_race = next(
+            (info['race'] for title, info in race_data.items()
+             if selected_country.lower() in title.lower()
+             and selected_year == datetime.fromisoformat(info['race'][0]['time'].replace('Z', '+00:00')).year),
+            None
+        )
+
+        if selected_race:
+            prompt = prepare_prompt(selected_race)
+            if prompt:
+                summary = generate_summary(prompt)
+                st.session_state['race_summary'] = format_summary(summary)
+            else:
+                st.session_state['race_summary'] = "No significant events found for analysis."
+        else:
+            st.session_state['race_summary'] = "No matching race data found for the selected year and country."
+
+        st.session_state['analysis_in_progress'] = False
+        st.rerun()
+
     if st.button("Download Results"):
-        pdf_buffer = create_pdf(race_summary, selected_year, selected_gp)
+        pdf_buffer = create_pdf(st.session_state['race_summary'], selected_year, selected_country)
         st.download_button(
-            label="Click to Download PDF",
-            data=pdf_buffer.getvalue(),
-            file_name=f"{selected_gp}_GP_{selected_year}_Analysis.pdf",
+            label="Download Analysis as PDF",
+            data=pdf_buffer,
+            file_name=f"{selected_country}_GP_{selected_year}_Analysis.pdf",
             mime="application/pdf"
         )
- 
+
 with col2:
     st.markdown("## Analysis")
-    
-    if 'generate_clicked' in st.session_state and st.session_state.generate_clicked:
-        st.markdown(race_summary)
-    else:
+    if st.session_state['analysis_in_progress']:
         st.markdown("""
+            <div class='loading'>
+                Generating Analysis... Please wait
+                <br>
+                <span style='font-size: 14px;'>This may take up to 30 seconds</span>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
             <div style='
                 border: 2px solid #E10600;
                 border-radius: 10px;
                 padding: 20px;
                 min-height: 400px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
+                overflow-y: auto;
             '>
-                <h3>Lap Analysis Visualization Will Appear Here</h3>
+                <div class='summary-text'>
+                    {st.session_state['race_summary'].replace('\n', '<br>')}
+                </div>
             </div>
         """, unsafe_allow_html=True)
- 
