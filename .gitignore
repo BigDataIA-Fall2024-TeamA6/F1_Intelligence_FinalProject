@@ -2,3 +2,5 @@ fp
 __pycache__
 .env
 requirements.txt
+F1Proj
+streamlit/tests/test_sample.py
