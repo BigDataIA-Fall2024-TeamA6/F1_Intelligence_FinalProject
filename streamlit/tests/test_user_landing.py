@@ -1,11 +1,11 @@
 import pytest
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from ..pages.user_landing import get_race_calendar, get_driver_standings, get_constructor_standings
+from streamlit.pages.user_landing import get_race_calendar, get_driver_standings, get_constructor_standings
 
 @pytest.fixture
 def mock_mysql_connector():
-    with patch('user_landing.mysql.connector') as mock_connector:
+    with patch('streamlit.pages.user_landing.mysql.connector') as mock_connector:
         mock_connection = MagicMock()
         mock_cursor = MagicMock()
         mock_connector.connect.return_value = mock_connection
