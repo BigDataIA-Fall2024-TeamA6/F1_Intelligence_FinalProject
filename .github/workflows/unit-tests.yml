@@ -21,14 +21,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest mysql-connector-python
+        pip install streamlit pytest mysql-connector-python pandas
         # Add any other dependencies your project needs
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     
     - name: Run unit tests
       run: |
-        # Add the project root to PYTHONPATH to resolve import issues
         export PYTHONPATH=$PYTHONPATH:${{ github.workspace }}
-        pytest streamlit/tests/
+        python -m pytest streamlit/tests/
       env:
         PYTHONPATH: ${{ github.workspace }}

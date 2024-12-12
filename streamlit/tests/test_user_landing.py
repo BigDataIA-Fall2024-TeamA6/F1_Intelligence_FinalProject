@@ -1,7 +1,37 @@
 import pytest
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from streamlit.pages.user_landing import get_race_calendar, get_driver_standings, get_constructor_standings
+
+# Mock Streamlit components before importing the module
+import sys
+from unittest.mock import MagicMock
+
+# Create a mock for Streamlit components
+class MockStreamlit:
+    def __init__(self):
+        self.components = MagicMock()
+        self.set_page_config = MagicMock()
+        self.title = MagicMock()
+        self.write = MagicMock()
+        self.error = MagicMock()
+        self.subheader = MagicMock()
+        self.table = MagicMock()
+        self.columns = MagicMock(return_value=[MagicMock(), MagicMock()])
+        self.tabs = MagicMock(return_value=[MagicMock(), MagicMock(), MagicMock()])
+        self.switch_page = MagicMock()
+        self.markdown = MagicMock()
+        self.session_state = MagicMock()
+
+sys.modules['streamlit'] = MockStreamlit()
+sys.modules['streamlit.components'] = MockStreamlit()
+sys.modules['streamlit.components.v1'] = MagicMock()
+
+# Now import the module to test
+from streamlit.pages.user_landing import (
+    get_race_calendar, 
+    get_driver_standings, 
+    get_constructor_standings
+)
 
 @pytest.fixture
 def mock_mysql_connector():
@@ -10,6 +40,7 @@ def mock_mysql_connector():
         mock_cursor = MagicMock()
         mock_connector.connect.return_value = mock_connection
         mock_connection.cursor.return_value = mock_cursor
+        mock_cursor.fetchall.return_value = []
         yield mock_connector
 
 def test_get_race_calendar(mock_mysql_connector):
