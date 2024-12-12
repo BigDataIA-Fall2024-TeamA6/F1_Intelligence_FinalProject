@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from F1_Intelligence_FinalProject.streamlit.pages.user_landing import get_race_calendar, get_driver_standings, get_constructor_standings
+from pages.user_landing import get_race_calendar, get_driver_standings, get_constructor_standings
 
 @pytest.fixture
 def mock_mysql_connector():
