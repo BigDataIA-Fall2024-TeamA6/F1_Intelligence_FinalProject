@@ -27,7 +27,7 @@ jobs:
     
     - name: Run unit tests
       run: |
-        export PYTHONPATH=$PYTHONPATH:${{ github.workspace }}
-        python -m pytest streamlit/tests/
+        export PYTHONPATH=$PYTHONPATH:${{ github.workspace }}/streamlit_app
+        python -m pytest streamlit_app/tests/
       env:
         PYTHONPATH: ${{ github.workspace }}
