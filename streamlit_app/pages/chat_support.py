@@ -1,149 +1,187 @@
 import streamlit as st
-import time
-from research_agent import get_graph, run_oracle, run_tool, tools
-from langchain_core.agents import AgentAction
+from openai import OpenAI
+import mysql.connector
+from datetime import datetime
+import uuid
+import os
+from dotenv import load_dotenv
 
-def initialize_session_state():
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
-    if 'ticket_created' not in st.session_state:
-        st.session_state.ticket_created = False
+# Load environment variables
+load_dotenv()
 
-def get_ai_response(question):
-    """
-    Use the research agent for customer support
-    """
-    ai_agent = get_graph()
-    state = {
-        "input": question,
-        # "chat_history": [],
-        "intermediate_steps": []
-    }
-    
-    while True:
-        state = run_oracle(state)
-        if state["intermediate_steps"][-1].tool == "final_answer":
-            break
-        state = run_tool(state)
-    
-    response = state["intermediate_steps"][-1].log
-    create_ticket_flag = "create_ticket" in response.lower()
-    
-    return response, create_ticket_flag
+# Fetch RDS credentials
+DB_CONFIG = {
+    'host': os.getenv('DB_HOST', 'bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com'),
+    'user': os.getenv('DB_USER', 'admin'),
+    'password': os.getenv('DB_PASSWORD', 'amazonrds7245'),
+    'database': os.getenv('DB_NAME', 'bdia_team6_finalproject_db'),
+    'port': os.getenv('RDS_PORT', '3306')
+}
 
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
+class PaymentVerifier:
+    def __init__(self, config):
+        self.connection_config = config
+
+    def get_connection(self):
+        return mysql.connector.connect(**self.connection_config)
+
+    def verify_active_payment(self, username):
+        try:
+            connection = self.get_connection()
+            cursor = connection.cursor(dictionary=True)
+            query = """
+            SELECT * FROM ticket_info 
+            WHERE username = %s 
+            AND status = 'ACTIVE'
+            """
+            cursor.execute(query, (username,))
+            payment = cursor.fetchone()
+            cursor.close()
+            connection.close()
+            return payment
+        except mysql.connector.Error as err:
+            st.error(f"Database error: {err}")
+            return None
+
+    def cancel_subscription(self, customer_id):
+        try:
+            connection = self.get_connection()
+            cursor = connection.cursor()
+            update_query = """
+            UPDATE ticket_info 
+            SET status = 'CANCELLED', 
+                TicketDate1 = NOW() 
+            WHERE username = %s 
+            AND status = 'ACTIVE'
+            """
+            cursor.execute(update_query, (customer_id,))
+            connection.commit()
+            is_cancelled = cursor.rowcount > 0
+            cursor.close()
+            connection.close()
+            return is_cancelled
+        except mysql.connector.Error as err:
+            st.error(f"Database error: {err}")
+            return False
+
+def create_support_ticket(customer_id, request_type, description):
+    try:
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+        ticket_id = str(uuid.uuid4())
+        query = """
+        INSERT INTO support_tickets 
+        (ticket_id, customer_id, request_type, description, status, created_at) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (
+            ticket_id,
+            customer_id,
+            request_type,
+            description,
+            'OPEN',
+            datetime.now()
+        ))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return ticket_id
+    except mysql.connector.Error as err:
+        st.error(f"Database error: {err}")
+        return None
+
+def detect_support_action(user_message):
+    refund_keywords = ['refund', 'money back', 'return payment']
+    cancel_keywords = ['cancel', 'terminate', 'end subscription']
+    for keyword in refund_keywords:
+        if keyword in user_message.lower():
+            return 'REFUND'
+    for keyword in cancel_keywords:
+        if keyword in user_message.lower():
+            return 'CANCEL_SUBSCRIPTION'
+    return None
+
+def get_openai_response(client, messages):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return None
 
 def main():
+    st.title("🤖 AI Customer Support Bot")
+    st.write("Your intelligent support assistant!")
 
-    initialize_session_state()
-    
+    # Sidebar configuration
+    with st.sidebar:
+        st.header("Configuration")
 
-    st.markdown(
-        """
-        <style>
-        .stApp {
-            background-color: #000000;
-            color: #FFFFFF;
-        }
-        .stButton>button {
-            width: 100%;
-            background-color: #FF1E00;
-            color: white;
-            font-weight: bold;
-            border: none;
-            border-radius: 5px;
-            padding: 10px;
-        }
-        .stButton>button:hover {
-            background-color: #DC0000;
-        }
-        .stTextInput>div>div>input {
-            background-color: #2B2B2B;
-            color: white;
-        }
-        .stMarkdown {
-            color: #FFFFFF;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+        customer_id = st.session_state.get('username')
 
-    col1, col2 = st.columns([1,2])
+        if customer_id:
+            st.info(f"Customer ID: {customer_id}")
+        else:
+            st.warning("Customer ID not set in session state")
 
-    with col1:
-        if st.button("Home"):
-            st.switch_page("pages/user_landing.py")
-        st.markdown("---")
-        st.image("https://logodownload.org/wp-content/uploads/2016/11/formula-1-logo-7.png", width=200)
 
-        # Support Options Section
-        st.markdown("### Support Options")
-        
-        # FAQ Section
-        st.markdown("#### Frequently Asked Questions")
-        faqs = {
-            "Account Issues": "Learn how to manage your account",
-            "Subscription": "Billing and payment information",
-            "Technical Support": "Troubleshooting common problems"
-        }
-        for faq, description in faqs.items():
-            if st.button(faq):
-                st.write(description)
-        
-        # Contact Information
-        st.markdown("#### Contact Us")
-        st.markdown("""
-        🎫 **Support Ticket System**
-        - AI-powered chat assistance
-        - Automatic ticket creation for complex issues
-        - Quick resolution for common queries
+        # Initialize clients
+        client = None
+        payment_verifier = None
 
-        📞 **Support Hotline**: +1 (555) F1-HELP
-        📧 **Email**: support@f1app.com
-        🕒 **Support Hours**: 24/7 Support
+        if OPENAI_API_KEY:
+            # Initialize OpenAI client
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            # Initialize Payment Verifier
+            payment_verifier = PaymentVerifier(DB_CONFIG)
+        else:
+            st.warning("Please provide the OpenAI API Key")
 
-        📚 **FAQ Section**
-        - Troubleshooting common issues
-        - Account management help
-        - Billing and subscription information
-        """)
+    # Session state for messages
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-    with col2:
-        st.title("F1 Customer Support 🏁")
-        
-        chat_container = st.container()
-        
-        prompt = st.chat_input("How can we assist you today?")
-        
-        with chat_container:
-            if len(st.session_state.messages) == 0:
-                welcome_msg = "Welcome to F1 Customer Support! How can I assist you today?"
-                st.session_state.messages.append({"role": "assistant", "content": welcome_msg})
-            
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-        
-            if prompt:
-                with st.chat_message("user"):
-                    st.markdown(prompt)
-                st.session_state.messages.append({"role": "user", "content": prompt})
+    # Display chat history
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-                with st.chat_message("assistant"):
-                    with st.spinner("Processing your request..."):
-                        response, create_ticket_flag = get_ai_response(prompt)
+    # User input
+    if prompt := st.chat_input("How can I help you today?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        support_action = detect_support_action(prompt)
+        conversation = [
+            {"role": "system", "content": "You are a helpful Formula 1 customer support assistant. Only answer questions related to Formula1 ticket cancel or payment else give error. Only call the cancel or payment tool whenever needed"},
+            *st.session_state.messages
+        ]
+
+        with st.chat_message("assistant"):
+            with st.spinner("Processing your request..."):
+                if client and payment_verifier and customer_id:
+                    response = get_openai_response(client, conversation)
+                    if support_action == 'CANCEL_SUBSCRIPTION':
+                        active_payment = payment_verifier.verify_active_payment(customer_id)
+                        if active_payment:
+                            cancellation_result = payment_verifier.cancel_subscription(customer_id)
+                            response += "\n\n*Subscription successfully cancelled.*" if cancellation_result else "\n\n*Unable to cancel subscription. Please contact support.*"
+                        else:
+                            response += "\n\n*No active tickets found to cancel.*"
+                    if support_action:
+                        ticket_id = create_support_ticket(customer_id, support_action, prompt)
+                        response += f"\n\n*Support ticket (#{ticket_id}) has been created.*"
+                    if response:
                         st.markdown(response)
-                        if create_ticket_flag and not st.session_state.ticket_created:
-                            st.success("A support ticket has been created. Our team will get back to you soon.")
-                            st.session_state.ticket_created = True
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+                else:
+                    st.error("Please provide all required configurations")
 
 if __name__ == "__main__":
-    st.set_page_config(
-        page_title="F1 Customer Support",
-        page_icon="🏁",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
     main()
