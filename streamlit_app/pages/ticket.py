@@ -29,12 +29,9 @@ def validate_output(ticket_info):
         
         
 
-
-customer_id = st.session_state.get('username')
-
 ticket_info = st.session_state.get("ticket_info")
-# st.write(ticket_info)
-# validate_output(ticket_info)
+st.write(ticket_info)
+validate_output(ticket_info)
 
 
 
@@ -81,7 +78,7 @@ def check_payment_status(session_id):
 st.title("Ticket Checkout Page")
 
 with st.form("payment_form"):
-    # event_dates = st.text_input("Event dates",value=ticket_info.get('dates',""))
+    event_dates = st.text_input("Event dates",value=ticket_info.get('dates',""))
     event_loc = st.text_input("Race location",value=ticket_info.get('location',""))
     ticket_count = st.number_input("Ticket Count",step=1,value=ticket_info.get('count',0))
     total_amount = st.number_input("Total Amount (USD)", step=1,value=int(ticket_count * ticket_info.get('cost',0)))

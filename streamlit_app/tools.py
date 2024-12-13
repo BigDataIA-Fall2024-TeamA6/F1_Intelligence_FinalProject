@@ -4,7 +4,8 @@ from pinecone import Pinecone,ServerlessSpec
 from langchain_core.agents import AgentAction
 from sentence_transformers import SentenceTransformer
 from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
-from langchain_openai import ChatOpenAI,OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
 from openai import OpenAIError, NotFoundError
 import streamlit as st
 from state import State,QueryOutput

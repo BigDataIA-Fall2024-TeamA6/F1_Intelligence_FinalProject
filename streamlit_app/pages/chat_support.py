@@ -5,7 +5,6 @@ from datetime import datetime
 import uuid
 import os
 from dotenv import load_dotenv
-import json
 
 # Load environment variables
 load_dotenv()
@@ -20,79 +19,13 @@ DB_CONFIG = {
 }
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-client = OpenAI(api_key=OPENAI_API_KEY)
-
 
 class PaymentVerifier:
     def __init__(self, config):
         self.connection_config = config
-        
 
     def get_connection(self):
         return mysql.connector.connect(**self.connection_config)
-    
-    def fetch_records(self):
-        try:
-            conn = self.get_connection()
-            if not conn:
-                st.error("Unable to establish a database connection.")
-                return None
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM validation_table")
-            table_entries = cursor.fetchall()
-            cursor.close()
-            conn.close()
-            return table_entries
-        except mysql.connector.Error as err:
-            st.error(f"Database error: {err}")
-            return None
-    
-    def call_openai(self,prompt,table_entries):
-        response = client.chat.completions.create(model="gpt-4o",
-                    messages=[
-                    {
-                    "role":"system",
-                    
-                    "content":
-                    f"""
-                You're an intelligent data retrieval assistant. Refer the below json value and get me the number of tickets requested, venue and total price 
-                as the product of number of tickets and price per ticket  based on the user prompt.
-                Prompt - {prompt} \n \n JSON value - {table_entries}. The number of tickets, venue and price should be returned as a JSON value with the keys named as count, location and cost respectively.
-                Use only the above mentioned keys as the names. The output should strictly be in JSON format with keys location, price and cost.
-                """                                          
-                    },
-                    {"role":"user",
-                     "content":prompt
-                     }
-                    ],
-                      response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "racepass_details",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "location": {
-                            "description": "The name of the grand prix",
-                            "type": "string"
-                        }
-                        },
-                        "cost": {
-                            "description": "The cost of the ticket in US Dollars",
-                            "type": "number"
-                        },
-                        "count": {
-                            "description": "The number of tickets requested by the user",
-                            "type": "number"
-                        },
-                        
-                        "additionalProperties": False
-                    }
-                }
-            }
-                    )
-        return (response.choices[0].message.content)
-        
 
     def verify_active_payment(self, username):
         try:
@@ -162,7 +95,7 @@ def create_support_ticket(customer_id, request_type, description):
 def detect_support_action(user_message):
     refund_keywords = ['refund', 'money back', 'return payment']
     cancel_keywords = ['cancel', 'terminate', 'end subscription']
-    f1_keywords = ['history', 'rules', 'information', 'book', 'purchase']
+    f1_keywords = ['History', 'rules', 'information', 'Book', 'Purchase', 'driver']
     for keyword in refund_keywords:
         if keyword in user_message.lower():
             return 'REFUND'
@@ -171,7 +104,7 @@ def detect_support_action(user_message):
             return 'CANCEL_SUBSCRIPTION'
     for keyword in f1_keywords:
         if keyword in user_message.lower():
-            return 'TICKET_BOOKING'
+            st.switch_page("pages/AI_assistant.py")
     return None
 
 def get_openai_response(client, messages):
@@ -230,7 +163,7 @@ def main():
 
         support_action = detect_support_action(prompt)
         conversation = [
-            {"role": "system", "content": "You are a helpful Formula 1 customer support assistant. Only answer questions related to Formula1 ticket booking, cancellation or payment else give error. Only call the booking, cancel or payment tool whenever needed"},
+            {"role": "system", "content": "You are a helpful Formula 1 customer support assistant. Only answer questions related to Formula1 ticket cancel or payment else give error. Only call the cancel or payment tool whenever needed"},
             *st.session_state.messages
         ]
 
@@ -245,22 +178,14 @@ def main():
                             response += "\n\n*Subscription successfully cancelled.*" if cancellation_result else "\n\n*Unable to cancel subscription. Please contact support.*"
                         else:
                             response += "\n\n*No active tickets found to cancel.*"
-                            
-                    elif support_action == 'TICKET_BOOKING':
-                        table_entries = payment_verifier.fetch_records()
-                        ticket_info = payment_verifier.call_openai(prompt,table_entries)
-                        st.session_state.ticket_info = json.loads(ticket_info)
-                        st.switch_page("pages/ticket.py")
-                        
-                        
-                    if support_action in ['CANCEL_SUBSCRIPTION','REFUND']:
+                    if support_action:
                         ticket_id = create_support_ticket(customer_id, support_action, prompt)
                         response += f"\n\n*Support ticket (#{ticket_id}) has been created.*"
                     if response:
                         st.markdown(response)
                         st.session_state.messages.append({"role": "assistant", "content": response})
                 else:
-                    st.error(f"Please provide all required configurations")
+                    st.error("Please provide all required configurations")
 
 if __name__ == "__main__":
     main()
