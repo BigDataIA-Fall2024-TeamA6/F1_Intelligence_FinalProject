@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  fastapi:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.10
+    platform: linux/amd64
+    environment:
+      - MODULE_NAME=fastapi_backend.api
+      - VARIABLE_NAME=app
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RDS_HOST=${RDS_HOST}
+      - RDS_USER=${RDS_USER}
+      - RDS_PASSWORD=${RDS_PASSWORD}
+      - RDS_DB=${RDS_DB}
+    volumes:
+      - ./fastapi_backend:/app/fastapi_backend
+      - ./.env:/app/.env
+      - ./requirements.txt:/app/requirements.txt
+    ports:
+      - "8000:8000"
+    command: >
+      /bin/bash -c "pip install --no-cache-dir bcrypt --only-binary :all: &&
+      pip install -r /app/requirements.txt &&
+      uvicorn fastapi_backend.api:app --host 0.0.0.0 --port 8000 --reload"
