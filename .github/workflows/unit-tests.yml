@@ -3,8 +3,8 @@ name: Python Unit Tests
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  # pull_request:
+  #   branches: [ "main" ]
 
 jobs:
   test:
@@ -27,6 +27,7 @@ jobs:
     
     - name: Run unit tests
       run: |
+        export PYTHONPATH=$PYTHONPATH:/home/runner/work/F1_Intelligence_FinalProject/F1_Intelligence_FinalProject
         export PYTHONPATH=$PYTHONPATH:${{ github.workspace }}/streamlit_app
         python -m pytest streamlit_app/tests/
       env:
