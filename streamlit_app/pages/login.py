@@ -120,24 +120,27 @@ def main():
 
         col1, col2 = st.columns(2)
         with col1:
-            # if st.button("Start Engine 🏁", key="login"):
+            if st.button("Start Engine 🏁", key="login"):
+                st.session_state.username = "VD@gmail.com"
+                st.switch_page("pages/user_landing.py")
+                    
             #     # Validate user credentials against database
             #     user = validate_user(username, password)
             #     if user:
             #         st.success(f"Welcome to the race, {user['fname']} {user['lname']}!")
             #         # Store user details in session state
-            #         st.session_state.username = username
+                    
             #         st.session_state.user_id = user['id']
             #         st.session_state.user_type = user['user_type']
             #         st.session_state.full_name = f"{user['fname']} {user['lname']}"
                     
             #         # Routing based on user type
-            #         if user['user_type'] == 'admin':
-            #             st.switch_page("pages/employee.py")
-            #         else:
-                st.switch_page("pages/user_landing.py")
-                else:
-                    st.error("Pit stop error! Invalid Driver ID or Password.")
+                #     if user['user_type'] == 'admin':
+                #         st.switch_page("pages/employee.py")
+                #     else:
+                # st.switch_page("pages/user_landing.py")
+                # else:
+                #     st.error("Pit stop error! Invalid Driver ID or Password.")
         
         with col2:
             if st.button("Join the Team 🏎️", key="create_user"):
