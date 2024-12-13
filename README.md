@@ -89,7 +89,7 @@ F1_Intelligence_FinalProject/
 
 ### **Architecture Diagram**
 
-- **Architecture Diagram**: Demonstrates the unified, AI-powered platform.
+![F1_Architecture_Diagram](https://github.com/BigDataIA-Fall2024-TeamA6/F1_Intelligence_FinalProject/blob/main/architecture_diagram/F1_ArchDiag.jpeg)
 
 ### **Steps to Run this Application**
 
