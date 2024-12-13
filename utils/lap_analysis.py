@@ -27,7 +27,7 @@ AWS_BUCKET_NAME = os.getenv("S3_BUCKET_NAME_LAP")
 AWS_REGION = os.getenv("AWS_REGION")
 
 BASE_URL = "https://www.autosport.com"
-RACE_KEYWORDS = ["- Race", "- Race Day", "- race", "- race day", "— Race", "— Race Day", "— race", "— race day"]
+
 KEYWORDS_CLASSES = {
     "mslt-msg__flag_checkered": "checkered_flag",
     "mslt-msg__safety_car": "safety_car",
@@ -40,6 +40,16 @@ KEYWORDS_CLASSES = {
     "mslt-msg__lights_out": "lights_out",
     "mslt-msg__lights_green": "green_lights"
 }
+
+# Grand Prix list
+grand_prix_list = [
+    "Bahrain", "Saudi", "Australian", "Japanese", "Chinese",
+    "Miami", "Emilia Romagna", "Monaco", "Canadian", "Spanish",
+    "Austrian", "British", "Hungarian", "Belgian", "Dutch",
+    "Italian", "Azerbaijan", "Singapore", "Portuguese",
+    "US", "United States", "Mexico", "Mexican", "Sao Paulo", "French",
+    "Las Vegas", "Qatar", "Abu Dhabi", "Brazilian", "Styrian", "Turkish", "Imola"
+]
 
 def create_webdriver():
     """
@@ -80,32 +90,52 @@ def parse_timestamp(timestamp_str):
 
 def get_race_links(driver):
     """
-    Scrape race links from pages p=0 to p=13 with specific race keywords.
+    Scrape race links from pages p=0 to p=13 where titles strictly end with 'Race' or 'Race day'.
     """
     links = []
-    for page in range(14):  # 0 to 13
+    for page in range(14):  # Pages 0 to 13
         url = f"https://www.autosport.com/live/?p={page}"
         try:
             driver.get(url)
-            time.sleep(3)
-            # Directly parse page source 
+            time.sleep(3)  # Allow page content to load
             soup = BeautifulSoup(driver.page_source, 'html.parser')
 
-            # Filter links with race keywords
-            page_links = [
-                BASE_URL + a['href']
-                for a in soup.find_all('a', href=True)
-                if any(keyword.lower() in a.text.lower() for keyword in RACE_KEYWORDS)
-            ]
+            # Extract links with titles strictly ending with 'Race' or 'Race day'
+            page_links = []
+            for a in soup.find_all('a', href=True, class_='ms-item'):
+                title_tag = a.find('p', class_='ms-item__title')
+                if title_tag:
+                    title = title_tag.text.strip()
+                    if title.lower().endswith("race") or title.lower().endswith("race day"):
+                        page_links.append(BASE_URL + a['href'])
+
+            if not page_links:
+                logger.warning(f"No race links found on page {page}.")
+            else:
+                logger.info(f"Page {page}: Found {len(page_links)} race links.")
 
             links.extend(page_links)
-            logger.info(f"Processed page {page}, found {len(page_links)} race links")
-
-            time.sleep(0.5)  # Minimal delay between page requests
+            time.sleep(0.5)  # Slight delay before processing next page
         except Exception as e:
             logger.error(f"Error processing page {page}: {e}")
 
     return list(set(links))
+
+def extract_country_name(title):
+    """
+    Extract the country name from the race title based on the predefined Grand Prix list.
+    If 'US' or 'United States', save as 'US'.
+    If 'Mexico' or 'Mexican', save as 'Mexico'.
+    """
+    for country in grand_prix_list:
+        if country.lower() in title.lower():
+            if country.lower() in ["us", "united states"]:
+                return "US"
+            if country.lower() in ["mexico", "mexican"]:
+                return "Mexico"
+            return country
+    return "Unknown"
+
 
 def scrape_race_content(driver, link):
     """
@@ -119,7 +149,7 @@ def scrape_race_content(driver, link):
         while True:
             try:
                 # Find and click 'Load more' button
-                load_more_button = WebDriverWait(driver,5 ).until(
+                load_more_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, "button.mslt-more__btn"))
                 )
                 load_more_button.click()
@@ -132,6 +162,7 @@ def scrape_race_content(driver, link):
 
         # Parse the fully loaded page
         race_title = driver.title.strip()
+        country_name = extract_country_name(race_title)
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         messages = soup.find_all('div', class_="mslt-msg")
 
@@ -167,6 +198,7 @@ def scrape_race_content(driver, link):
 
         # Final structure for the race
         race_data = {
+            "country": country_name,
             "race": all_messages
         }
 
