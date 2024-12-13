@@ -11,7 +11,7 @@
 ---
 
 a. **Architecture Diagram**: [F1\_Architecture\_Diagram](https://github.com/user-attachments/assets/c0fdedcc-5723-4c3b-b5e1-7f2c5021be45)\
-b. **CodeLabs Docuementation**: [Codelabs Preview]([https://codelabs-preview.appspot.com/?file_id=1t_GZmwSyKnDMAxhKAaY9cRZL4CEPNU9gTiNYkzEAi7o/#2](https://codelabs-preview.appspot.com/?file_id=1CUduezE76kCqx0TRpqaDo3Pl7KDuOFKQCUUVGRm7FnU#0))\
+b. **CodeLabs Docuementation**: [Codelabs Preview](https://codelabs-preview.appspot.com/?file_id=1CUduezE76kCqx0TRpqaDo3Pl7KDuOFKQCUUVGRm7FnU#0)\
 c. **Video Recording**: [Video Recording](https://northeastern.zoom.us/rec/share/teRm01lwb_YqW1MNqz4k4j1kjuFceopDvdC24ALmXLAkKH1e6bLjJCNYZ5iF5BNp.j0p14wd0cYALbO52)
 
 ### **Synopsis**
