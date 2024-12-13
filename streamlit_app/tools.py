@@ -5,12 +5,15 @@ from langchain_core.agents import AgentAction
 from sentence_transformers import SentenceTransformer
 from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
 from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+from openai import OpenAIError, NotFoundError
 import streamlit as st
 from state import State,QueryOutput
 from langchain import hub
 from db import get_connection
 import time
 import os
+import logging
 from dotenv import load_dotenv
 
 
@@ -24,9 +27,12 @@ llm = ChatOpenAI(model="gpt-4o-mini",api_key=api_key)
 query_prompt_template = hub.pull("langchain-ai/sql-query-system-prompt")
 assert len(query_prompt_template.messages) == 1
 
-pc_api_key = os.getenv("PINECONE_API_KEY")
-pc = Pinecone(api_key = pc_api_key)
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 spec = ServerlessSpec(cloud = "aws", region = "us-east-1")
+
+embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY"))
+
+logging.basicConfig(level=logging.DEBUG, filename="research_agent_debug.log")
 
 
 
@@ -82,47 +88,131 @@ def web_search(query: str):
     return contexts
 
 
-def format_rag_contexts(matches: list):
-    contexts = []
-    for match in matches:
-        metadata = match.metadata if hasattr(match, 'metadata') else {}
-        if metadata:
-            text = metadata.get('text', '')
-        contexts.append(text)
-    context_str = "\n---\n".join(contexts)
-    return context_str
+# def format_rag_contexts(matches: list):
+#     contexts = []
+#     for match in matches:
+#         metadata = match.metadata if hasattr(match, 'metadata') else {}
+#         if metadata:
+#             text = metadata.get('text', '')
+#         contexts.append(text)
+#     context_str = "\n---\n".join(contexts)
+#     return context_str
 
-def build_knowledge_base():
-    index_name = "pdf-364ff30954" # insert PDF document name here
+# def build_knowledge_base():
+#     index_name = "pdf-364ff30954" # insert PDF document name here
 
-    # check if index already exists (it shouldn't if this is first time)
-    if index_name not in pc.list_indexes().names():
-    # if does not exist, create index
-        pc.create_index(
-        index_name,
-        dimension=1536,  # dimensionality of embed 3
-        metric='dotproduct',
-        spec=spec
-    )
-    # wait for index to be initialized
-    while not pc.describe_index(index_name).status['ready']:
-        time.sleep(1)
+#     # check if index already exists (it shouldn't if this is first time)
+#     if index_name not in pc.list_indexes().names():
+#     # if does not exist, create index
+#         pc.create_index(
+#         index_name,
+#         dimension=1536,  # dimensionality of embed 3
+#         metric='dotproduct',
+#         spec=spec
+#     )
+#     # wait for index to be initialized
+#     while not pc.describe_index(index_name).status['ready']:
+#         time.sleep(1)
         
-    # connect to index
-    index = pc.Index(index_name)
-    return index    
+#     # connect to index
+#     index = pc.Index(index_name)
+#     return index    
 
 
 @tool("rag_search")
 def rag_search(query: str):
-    """Finds specialist information on AI using a natural language query."""
-    encoder = SentenceTransformer("all-mpnet-base-v2")    
-    index = build_knowledge_base()
-    query_em = encoder.encode(query).tolist()
-    results = index.query(vector=query_em, top_k=2, include_metadata=True)
-    context_str = format_rag_contexts(results.matches)
-    return context_str
+    """
+    Perform a RAG (Retrieval-Augmented Generation) search using Pinecone vector database
+    and then generate a final answer using an OpenAI LLM (with fallback options).
 
+    Args:
+        query (str): The user's query.
+        index_name (str): The name of the Pinecone index.
+        top_k (int): Number of top results to retrieve.
+
+    Returns:
+        str: The final response to the user.
+    """
+    index_name = "f1-data-index"
+    top_k = 3
+
+    try:
+        logging.debug(f"Received query: {query}")
+
+        # Ensure index exists
+        if index_name not in [idx.name for idx in pc.list_indexes()]:
+            raise ValueError(f"Index {index_name} does not exist. Please create the index before querying.")
+
+        # Connect to the Pinecone index
+        index = pc.Index(index_name)
+
+        # Generate embeddings for the query
+        query_embedding = embeddings.embed_query(query)
+
+        # Perform similarity search
+        results = index.query(
+            vector=query_embedding,
+            top_k=top_k,
+            include_metadata=True,
+        )
+
+        # Extract and format results
+        contexts = []
+        for match in results.matches:
+            metadata = match.metadata
+            text = metadata.get("text", "No metadata found")
+            category = metadata.get("category", "General")
+            season = metadata.get("season", "N/A")
+            contexts.append(f"Category: {category}, Season: {season}\n{text}")
+
+        context_text = "\n\n".join(contexts) if contexts else "No relevant results found."
+
+        logging.debug(f"RAG search context: {context_text}")
+
+        # If no relevant context, return a default message
+        if not context_text.strip() or context_text.strip() == "No relevant results found.":
+            return "I couldn't find relevant information for your query in the database."
+
+        # Initialize OpenAI LLM with fallback
+        try:
+            llm = ChatOpenAI(
+                model="gpt-4o",
+                temperature=0.7,
+                openai_api_key=os.getenv("OPENAI_API_KEY")
+            )
+        except NotFoundError:
+            try:
+                llm = ChatOpenAI(
+                    model="gpt-3.5-turbo",
+                    temperature=0.2,
+                    openai_api_key=os.getenv("OPENAI_API_KEY")
+                )
+                logging.warning("Falling back to GPT-3.5 as GPT-4 is not available.")
+            except OpenAIError as e:
+                raise RuntimeError(f"Failed to initialize OpenAI language model: {str(e)}")
+
+        # Create a prompt with the retrieved context
+        prompt = f"""You are an AI assistant specialized in Formula 1 historical data.
+You have access to historical data from 2013 to 2024.
+
+Query: '{query}'
+
+Context retrieved from the database:
+{context_text}
+
+Provide an answer to the query based on the context.
+
+Response:"""
+
+        # Invoke the LLM to generate the final answer
+        response = llm.invoke(prompt).content
+        logging.debug(f"Generated AI Response: {response}")
+
+        return response
+
+    except Exception as e:
+        logging.error(f"Error performing RAG search and generating response: {e}")
+        return f"An error occurred while processing your query: {str(e)}"
 
 
 @tool("final_answer")
