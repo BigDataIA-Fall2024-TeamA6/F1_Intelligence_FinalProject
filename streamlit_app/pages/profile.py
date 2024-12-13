@@ -40,7 +40,7 @@ def fetch_ticket_info(username):
         # Execute query to fetch ticket info
         cursor.execute("""
             SELECT 
-                ticket_id, username, Country, Venue, TicketDate1, TicketDate2, TicketDate3, TicketCount, TicketPrice
+                ticket_id, username, Country, Venue, TicketDate1, TicketDate2, TicketDate3, TicketCount, TicketPrice, status
             FROM ticket_info
             WHERE username = %s
         """, (username,))
@@ -64,7 +64,7 @@ def fetch_ticket_info(username):
         st.error(f"Database operation failed: {e}")
         return None
 
-def get_helpdesk_tickets(username):
+def get_support_tickets(username):
     try:
         # Connect to the MySQL database
         cnx = mysql.connector.connect(
@@ -74,24 +74,47 @@ def get_helpdesk_tickets(username):
             database="bdia_team6_finalproject_db"
         )
         
-        # Create cursor and execute the query to fetch helpdesk tickets
+        # Create cursor and execute the query to fetch support tickets
         cursor = cnx.cursor(dictionary=True)
         cursor.execute("""
             SELECT 
-                hdticket_id,
-                hdticket_summary,
-                chat_history,
-                username,
-                hdticket_status
-            FROM helpdesk_tickets
-            WHERE username = %s
+                ticket_id,
+                customer_id,
+                request_type,
+                description,
+                status,
+                created_at,
+                resolved_at
+            FROM support_tickets
+            WHERE customer_id = %s
         """, (username,))
         
         # Fetch all results
         results = cursor.fetchall()
         
-        # Transform results into a dictionary for each ticket
-        helpdesk_tickets = []
+        # Transform results into a list of dictionaries for each ticket
+        support_tickets = []
+        for ticket in results:
+            support_tickets.append({
+                "ticket_id": ticket["ticket_id"],
+                "customer_id": ticket["customer_id"],
+                "request_type": ticket["request_type"],
+                "description": ticket["description"],
+                "status": ticket["status"],
+                "created_at": ticket["created_at"],
+                "resolved_at": ticket["resolved_at"]
+            })
+        
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+
+        return support_tickets
+
+    except Exception as e:
+        st.error(f"Failed to fetch support tickets: {e}")
+        return None
+
         
         for row in results:
             ticket = {
@@ -278,7 +301,7 @@ def user_profile_page():
         st.header("Support Tickets")
         
         # Create sample ticket data with chat history
-        tickets_data = tickets_data = get_helpdesk_tickets(username)
+        tickets_data = tickets_data = get_support_tickets(username)
         
         # Display table with styling
         st.markdown("### Tickets Summary")

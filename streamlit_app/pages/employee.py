@@ -102,7 +102,62 @@ def fetch_ticket_info():
         st.error(f"Database operation failed: {e}")
         return None
 
-def get_helpdesk_tickets():
+def get_support_tickets():
+    try:
+        # Connect to the MySQL database (RDS instance)
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        
+        # Create a cursor and execute the query to fetch support tickets
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                ticket_id,
+                customer_id,
+                request_type,
+                description,
+                status,
+                created_at,
+                resolved_at
+            FROM support_tickets
+        """)
+        
+        # Fetch all results
+        results = cursor.fetchall()
+        
+        # Transform results into a dictionary for each ticket
+        support_tickets = []
+        for ticket in results:
+            support_tickets.append({
+                "ticket_id": ticket["ticket_id"],
+                "customer_id": ticket["customer_id"],
+                "request_type": ticket["request_type"],
+                "description": ticket["description"],
+                "status": ticket["status"],
+                "created_at": ticket["created_at"],
+                "resolved_at": ticket["resolved_at"]
+            })
+        
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+        
+        # Return the list of tickets
+        return support_tickets
+        
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return []
+    
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
+
+def update_ticket_status(ticket_id, new_status):
     try:
         # Connect to the MySQL database
         cnx = mysql.connector.connect(
@@ -111,72 +166,22 @@ def get_helpdesk_tickets():
             password="amazonrds7245",
             database="bdia_team6_finalproject_db"
         )
-        
-        # Create cursor and execute the query to fetch helpdesk tickets
-        cursor = cnx.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT 
-                hdticket_id,
-                hdticket_summary,
-                chat_history,
-                username,
-                hdticket_status
-            FROM helpdesk_tickets
-        """)
-        
-        # Fetch all results
-        results = cursor.fetchall()
-        
-        # Transform results into a dictionary for each ticket
-        helpdesk_tickets = []
-        
-        for row in results:
-            ticket = {
-                "hdticket_id": row['hdticket_id'],
-                "hdticket_summary": row['hdticket_summary'],
-                "chat_history": row['chat_history'],  # This is a JSON string
-                "username": row['username'],
-                "hdticket_status": row['hdticket_status']
-            }
-            helpdesk_tickets.append(ticket)
-        
-        # Close the cursor and connection
-        cursor.close()
-        cnx.close()
-        
-        return helpdesk_tickets
-    
-    except Exception as e:
-        st.error(f"Database connection failed: {e}")
-        return None
 
-def update_ticket_status(ticket_id, status):
-    try:
-        cnx = mysql.connector.connect(
-            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
-            user="admin",
-            password="amazonrds7245",
-            database="bdia_team6_finalproject_db"
-        )
         cursor = cnx.cursor()
-
-        # SQL query to update the ticket status
+        # Update ticket status in the database
         update_query = """
-            UPDATE helpdesk_tickets
-            SET hdticket_status = %s
-            WHERE hdticket_id = %s
+            UPDATE support_tickets
+            SET status = %s
+            WHERE ticket_id = %s
         """
-        cursor.execute(update_query, (status, ticket_id))
-
-        # Commit the transaction
+        cursor.execute(update_query, (new_status, ticket_id))
         cnx.commit()
-
-        # Close the cursor and connection
         cursor.close()
         cnx.close()
+        
+    except mysql.connector.Error as err:
+        print(f"Error updating ticket status: {err}")
 
-    except Exception as e:
-        st.error(f"Failed to update ticket status: {e}")
 
 def main():
     st.set_page_config(page_title="F1 Employee Dashboard", initial_sidebar_state="collapsed", layout="wide" )
@@ -280,30 +285,30 @@ def main():
             with col2:
                 st.header("Support Tickets")
 
-                tickets_data = get_helpdesk_tickets()
+                # Fetch support tickets data from the database
+                tickets_data = get_support_tickets()
 
                 if tickets_data:
+                    # Convert the fetched data into a DataFrame
                     tickets_df = pd.DataFrame(tickets_data)
 
-                    
+                    # Add selection column
+                    if 'selected_index' not in st.session_state:
+                        st.session_state.selected_index = None
 
-                # Add selection column
-                if 'selected_index' not in st.session_state:
-                    st.session_state.selected_index = None
+                    # Display the table
+                    st.dataframe(tickets_df, use_container_width=True)
 
-                # Display the table
-                st.dataframe(tickets_df, use_container_width=True)
+                    # Dropdown to select a row (alternative to checkboxes)
+                    selected_row_index = st.selectbox(
+                        "Select a ticket to update:",
+                        options=list(range(len(tickets_df))),
+                        format_func=lambda x: f"{tickets_df.iloc[x]['ticket_id']} - {tickets_df.iloc[x]['description']}"
+                    )
 
-                # Dropdown to select a row (alternative to checkboxes)
-                selected_row_index = st.selectbox(
-                    "Select a ticket to update:",
-                    options=list(range(len(tickets_df))),
-                    format_func=lambda x: f"{tickets_df.iloc[x]['hdticket_id']} - {tickets_df.iloc[x]['hdticket_summary']}"
-                )
-
-                # Update button
-                if st.button("Update Selected Ticket"):
-                    st.session_state.selected_index = selected_row_index
+                    # Update button
+                    if st.button("Update Selected Ticket"):
+                        st.session_state.selected_index = selected_row_index
 
             with col1:
                 st.markdown("""
@@ -327,25 +332,24 @@ def main():
 
                     # Wrap inputs inside the styled div
                     st.markdown('<div>', unsafe_allow_html=True)
-                    
+
                     # Create text input fields for editing
-                    complaint_id = st.text_input("Complaint ID", selected_row['hdticket_id'])
-                    issue_summary = st.text_input("Issue Summary", selected_row['hdticket_summary'])
-                    username = st.text_input("Username", selected_row['username'])
+                    complaint_id = st.text_input("Complaint ID", selected_row['ticket_id'])
+                    issue_summary = st.text_input("Issue Summary", selected_row['description'])
+                    customer_id = st.text_input("Customer ID", selected_row['customer_id'])
                     status = st.selectbox(
                         "Status",
-                        ['Pending', 'Approved'],
-                        index=['Pending', 'Approved'].index(selected_row['hdticket_status'])
+                        ['OPEN', 'RESOLVED'],
+                        index=['OPEN', 'RESOLVED'].index(selected_row['status'])
                     )
 
-                    
                     # Add save button for changes
                     if st.button("Save Changes"):
                         # Update the DataFrame
-                        tickets_df.at[st.session_state.selected_index, 'hdticket_id'] = complaint_id
-                        tickets_df.at[st.session_state.selected_index, 'hdticket_summary'] = issue_summary
-                        tickets_df.at[st.session_state.selected_index, 'username'] = username
-                        tickets_df.at[st.session_state.selected_index, 'hdticket_status'] = status
+                        tickets_df.at[st.session_state.selected_index, 'ticket_id'] = complaint_id
+                        tickets_df.at[st.session_state.selected_index, 'description'] = issue_summary
+                        tickets_df.at[st.session_state.selected_index, 'customer_id'] = customer_id
+                        tickets_df.at[st.session_state.selected_index, 'status'] = status
 
                         # Save changes to the database
                         update_ticket_status(complaint_id, status)
@@ -353,6 +357,7 @@ def main():
                         st.success("Changes saved successfully!")
 
                     st.markdown('</div>', unsafe_allow_html=True)
+
                     
 if __name__ == "__main__":
     main()
