@@ -17,15 +17,17 @@ load_dotenv()
 # Initialize OpenAI and S3 Clients
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 s3 = boto3.client('s3')
+S3_BUCKET_NAME= "f1-historical-data"
+S3_BUCKET_NAME_LAP="f1-lap-analysis-data"
 
 # Predefined Grand Prix list
 grand_prix_list = [
-    "Bahrain", "Saudi", "Australian", "Japanese", "Chinese",
+    "Bahrain", "Saudi Arabian", "Australian", "Japanese", "Chinese",
     "Miami", "Emilia Romagna", "Monaco", "Canadian", "Spanish",
     "Austrian", "British", "Hungarian", "Belgian", "Dutch",
-    "Italian", "Azerbaijan", "Singapore", "Portuguese",
-    "US", "Mexico", "Sao Paulo", "French",
-    "Las Vegas", "Qatar", "Abu Dhabi", "Brazilian", "Styrian", "Turkish", "Imola"
+    "Italian", "Azerbaijan", "Singapore",
+    "United States", "Mexico City", "São Paulo",
+    "Las Vegas", "Qatar", "Abu Dhabi", "Brazilian"
 ]
 
 # Streamlit Page Configuration
@@ -88,7 +90,6 @@ st.markdown("""
         overflow-y: auto;
         max-height: 400px;
         padding: -10px;
-        color: black;
     }
 
     /* Loading spinner */
@@ -106,7 +107,7 @@ st.markdown("""
 def fetch_race_data():
     try:
         response = s3.get_object(
-            Bucket=os.getenv('S3_BUCKET_NAME_LAP'),
+            Bucket=S3_BUCKET_NAME_LAP,
             Key='race_data.json'
         )
         return json.loads(response['Body'].read().decode('utf-8'))
@@ -244,7 +245,7 @@ def create_pdf(race_summary, selected_year, selected_gp):
 race_data = fetch_race_data()
 
 if 'race_summary' not in st.session_state:
-    st.session_state['race_summary'] = 'Lap Analysis will be displayed here.'
+    st.session_state['race_summary'] = 'Lap Analysis Will Appear Here'
 if 'analysis_in_progress' not in st.session_state:
     st.session_state['analysis_in_progress'] = False
 
@@ -268,14 +269,9 @@ with col1:
         st.session_state['analysis_in_progress'] = True
 
         selected_race = next(
-            (
-                info['race'] for title, info in race_data.items()
-                if selected_country.lower() == info['country'].lower()  # Match country
-                and any(
-                    selected_year == datetime.fromisoformat(event['time']).year
-                    for event in info['race']  # Match year from "time"
-                )
-            ),
+            (info['race'] for title, info in race_data.items()
+             if selected_country.lower() in title.lower()
+             and selected_year == datetime.fromisoformat(info['race'][0]['time'].replace('Z', '+00:00')).year),
             None
         )
 
