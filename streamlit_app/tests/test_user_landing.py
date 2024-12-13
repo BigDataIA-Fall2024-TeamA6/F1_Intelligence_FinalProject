@@ -35,7 +35,7 @@ from ..pages.user_landing import (
 
 @pytest.fixture
 def mock_mysql_connector():
-    with patch('streamlit.pages.user_landing.mysql.connector') as mock_connector:
+    with patch('streamlit_app.pages.user_landing.mysql.connector') as mock_connector:
         mock_connection = MagicMock()
         mock_cursor = MagicMock()
         mock_connector.connect.return_value = mock_connection
