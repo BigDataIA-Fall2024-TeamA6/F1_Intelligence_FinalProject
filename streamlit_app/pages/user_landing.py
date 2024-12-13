@@ -270,7 +270,7 @@ def user_landing_page():
 
 
     st.title("🏎️ F1 User Dashboard")
-    if "username" in st.session_state and st.session_state.user_type == "user":
+    if "username" in st.session_state:
         st.write(f"Welcome {st.session_state.username}!")
 
     if "favorite_team" not in st.session_state:
