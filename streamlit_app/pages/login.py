@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 import mysql.connector
-import bcrypt
+from passlib.hash import bcrypt
 from dotenv import load_dotenv
 
 # Load environment variables (recommended for sensitive information)
