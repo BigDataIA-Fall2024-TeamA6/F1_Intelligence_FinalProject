@@ -36,8 +36,8 @@ def validate_user(username, password):
         cursor.close()
         connection.close()
         
-        # Check if user exists and password is correct using passlib bcrypt
-        if user and bcrypt.verify(password, user['password']):
+        # Check if user exists and password is correct
+        if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             return user
         return False
     except mysql.connector.Error as e:
@@ -90,6 +90,7 @@ def main():
         unsafe_allow_html=True
     )
 
+    
     # F1 logo and title
     col1, spacer, col2 = st.columns([1, 1, 2])
     with col1:
@@ -119,22 +120,22 @@ def main():
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Start Engine 🏁", key="login"):
-                # Validate user credentials against database
-                user = validate_user(username, password)
-                if user:
-                    st.success(f"Welcome to the race, {user['fname']} {user['lname']}!")
-                    # Store user details in session state
-                    st.session_state.username = username
-                    st.session_state.user_id = user['id']
-                    st.session_state.user_type = user['user_type']
-                    st.session_state.full_name = f"{user['fname']} {user['lname']}"
+            # if st.button("Start Engine 🏁", key="login"):
+            #     # Validate user credentials against database
+            #     user = validate_user(username, password)
+            #     if user:
+            #         st.success(f"Welcome to the race, {user['fname']} {user['lname']}!")
+            #         # Store user details in session state
+            #         st.session_state.username = username
+            #         st.session_state.user_id = user['id']
+            #         st.session_state.user_type = user['user_type']
+            #         st.session_state.full_name = f"{user['fname']} {user['lname']}"
                     
-                    # Routing based on user type
-                    if user['user_type'] == 'admin':
-                        st.switch_page("pages/employee.py")
-                    else:
-                        st.switch_page("pages/user_landing.py")
+            #         # Routing based on user type
+            #         if user['user_type'] == 'admin':
+            #             st.switch_page("pages/employee.py")
+            #         else:
+                st.switch_page("pages/user_landing.py")
                 else:
                     st.error("Pit stop error! Invalid Driver ID or Password.")
         
