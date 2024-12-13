@@ -95,12 +95,16 @@ def create_support_ticket(customer_id, request_type, description):
 def detect_support_action(user_message):
     refund_keywords = ['refund', 'money back', 'return payment']
     cancel_keywords = ['cancel', 'terminate', 'end subscription']
+    f1_keywords = ['History', 'rules', 'information', 'Book', 'Purchase', 'driver']
     for keyword in refund_keywords:
         if keyword in user_message.lower():
             return 'REFUND'
     for keyword in cancel_keywords:
         if keyword in user_message.lower():
             return 'CANCEL_SUBSCRIPTION'
+    for keyword in f1_keywords:
+        if keyword in user_message.lower():
+            st.switch_page("pages/AI_assistant.py")
     return None
 
 def get_openai_response(client, messages):
