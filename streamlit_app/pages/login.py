@@ -36,8 +36,8 @@ def validate_user(username, password):
         cursor.close()
         connection.close()
         
-        # Check if user exists and password is correct
-        if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+        # Check if user exists and password is correct using passlib bcrypt
+        if user and bcrypt.verify(password, user['password']):
             return user
         return False
     except mysql.connector.Error as e:
@@ -90,7 +90,6 @@ def main():
         unsafe_allow_html=True
     )
 
-    
     # F1 logo and title
     col1, spacer, col2 = st.columns([1, 1, 2])
     with col1:
