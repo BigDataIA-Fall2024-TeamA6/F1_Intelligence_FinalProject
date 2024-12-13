@@ -10,9 +10,10 @@
 
 ---
 
-a. **Architecture Diagram**: [F1\_Architecture\_Diagram](https://github.com/user-attachments/assets/c0fdedcc-5723-4c3b-b5e1-7f2c5021be45)\
+a. **Architecture Diagram**: [F1\_Architecture\_Diagram](https://github.com/BigDataIA-Fall2024-TeamA6/F1_Intelligence_FinalProject/blob/main/architecture_diagram/F1_ArchDiag.jpeg)\
 b. **CodeLabs Docuementation**: [Codelabs Preview](https://codelabs-preview.appspot.com/?file_id=1CUduezE76kCqx0TRpqaDo3Pl7KDuOFKQCUUVGRm7FnU#0)\
-c. **Video Recording**: [Video Recording](https://northeastern.zoom.us/rec/share/teRm01lwb_YqW1MNqz4k4j1kjuFceopDvdC24ALmXLAkKH1e6bLjJCNYZ5iF5BNp.j0p14wd0cYALbO52)
+c. **Video Recording**: [Video Recording](https://northeastern.zoom.us/rec/share/teRm01lwb_YqW1MNqz4k4j1kjuFceopDvdC24ALmXLAkKH1e6bLjJCNYZ5iF5BNp.j0p14wd0cYALbO52)\
+d. **Deployed Streamlit Application**: [Streamlit Application](https://team6finalproject.streamlit.app/)
 
 Here’s an elaboration of the **F1_Intelligence** project concept:
 
