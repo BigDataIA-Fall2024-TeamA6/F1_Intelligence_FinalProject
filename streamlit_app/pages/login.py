@@ -44,6 +44,20 @@ def validate_user(username, password):
         st.error(f"Login error: {e}")
         return False
 
+# Initialize session state
+def initialize_session_state():
+    default_states = {
+        "username": None,
+        "user_id": None,
+        "user_type": None,
+        "full_name": None,
+        "logged_in": False
+    }
+    
+    for key, value in default_states.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
 # Streamlit page configuration
 st.set_page_config(
     page_title="F1 Pit Stop Login",
@@ -76,6 +90,7 @@ def main():
         unsafe_allow_html=True
     )
 
+    
     # F1 logo and title
     col1, spacer, col2 = st.columns([1, 1, 2])
     with col1:
