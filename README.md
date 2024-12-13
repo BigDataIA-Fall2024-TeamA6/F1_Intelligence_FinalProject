@@ -11,12 +11,74 @@
 ---
 
 a. **Architecture Diagram**: [F1\_Architecture\_Diagram](https://github.com/user-attachments/assets/c0fdedcc-5723-4c3b-b5e1-7f2c5021be45)\
-b. **CodeLabs Docuementation**: [Codelabs Preview](https://codelabs-preview.appspot.com/?file_id=1t_GZmwSyKnDMAxhKAaY9cRZL4CEPNU9gTiNYkzEAi7o/#2)\
+b. **CodeLabs Docuementation**: [Codelabs Preview](https://codelabs-preview.appspot.com/?file_id=1CUduezE76kCqx0TRpqaDo3Pl7KDuOFKQCUUVGRm7FnU#0)\
 c. **Video Recording**: [Video Recording](https://northeastern.zoom.us/rec/share/teRm01lwb_YqW1MNqz4k4j1kjuFceopDvdC24ALmXLAkKH1e6bLjJCNYZ5iF5BNp.j0p14wd0cYALbO52)
+
+Here’s an elaboration of the **F1_Intelligence** project concept:
+
+---
 
 ### **Synopsis**
 
-The **F1\_Intelligence** project aims to revolutionize the Formula 1 fan experience by integrating services like ticket booking, historical statistics, personalized news, and customer support into a single AI-powered platform. This unified interface uses agent-based architecture to streamline interactions, making it easier for fans to navigate the diverse and complex F1 ecosystem.
+The **F1_Intelligence** project aspires to redefine the Formula 1 fan experience by merging advanced AI capabilities with a seamless user interface. This comprehensive platform integrates ticket booking, historical insights, real-time statistics, personalized news feeds, lap-by-lap race analysis, and 24/7 customer support into a single, cohesive digital ecosystem. By leveraging an agent-based architecture, **F1_Intelligence** eliminates the need for fans to juggle multiple platforms, offering an efficient, engaging, and intuitive way to immerse themselves in the thrilling world of Formula 1.
+
+---
+
+### **Problem Statement**
+
+#### **Objective:**
+
+The Formula 1 fan journey today faces several hurdles that diminish the overall experience. Fans often have to rely on disparate platforms to meet their diverse needs—be it purchasing race tickets, exploring historical statistics, accessing real-time race data, or finding answers to their queries. The **F1_Intelligence** platform seeks to solve these challenges by offering a single, AI-driven solution to:
+
+1. **Fragmentation**:
+   - Fans must navigate multiple websites and apps for ticket bookings, news updates, and customer service inquiries. This scattered experience creates frustration and inefficiency.
+
+2. **Complexity**:
+   - Accessing accurate, centralized data for race analysis, historical comparisons, and detailed statistics is a cumbersome task due to the lack of unified platforms catering to such needs.
+
+3. **User Experience**:
+   - Existing solutions often fail to provide personalized, interactive services. Fans seek a tailored experience that aligns with their preferences, such as curated historical insights, lap-by-lap race details, and dynamic service recommendations.
+
+---
+
+#### **Goals:**
+
+The **F1_Intelligence** project aims to:
+
+1. **Leverage AI Agents**:
+   - Introduce AI-powered agents to automate key processes, such as:
+     - Simplified ticket booking.
+     - Real-time customer support via conversational AI.
+     - Personalized service recommendations based on user preferences and behavior.
+
+2. **Provide Real-Time Data & Insights**:
+   - Enable real-time race tracking, lap-by-lap analysis, and statistical insights, presented in an easily digestible format.
+
+3. **Historical Knowledge Base**:
+   - User would not have to scroll through multiple tables to get answers to their queries on historical events in F1. A chat assistant should be able to answer based on its knowledge base.
+
+---
+
+### **Desired Outcome**
+
+With the **F1_Intelligence** platform, Formula 1 enthusiasts will gain access to a transformative digital experience that:
+
+1. **Streamlines Ticket Booking**:
+   - Fans can simply ask an AI assistant to book tickets for them and will need to make payment directly for races worldwide without navigating multiple platforms.
+   - AI agents assist in finding the best ticket options based on user preferences and budget constraints.
+
+2. **Offers Historical and Real-Time Data**:
+   - Fans can explore comprehensive historical data, including driver and team performances, race highlights, and iconic moments in F1 history.
+   - The platform delivers real-time lap-by-lap race analysis, integrating detailed telemetry, pit stop strategies, and live standings.
+
+3. **Delivers Personalized News & Insights**:
+   - AI-curated news feeds tailored to individual interests, such as updates on favorite drivers, teams, or upcoming races.
+
+4. **Provides 24/7 AI-Driven Customer Support**:
+   - Virtual agents answer queries on topics like ticket bookings, event schedules, and race-day logistics in real-time.
+   - Support is also extended for troubleshooting technical issues and resolving ticket-related concerns.
+
+---
 
 ### **Technologies Used**
 
@@ -27,30 +89,6 @@ The **F1\_Intelligence** project aims to revolutionize the Formula 1 fan experie
 - **Amazon S3**: For unstructured data storage and management.
 - **Amazon RDS**: For structured database solutions.
 - **Agent-Based Architecture**: To coordinate interactions between multiple services seamlessly.
-
-### **Problem Statement**
-
-#### Objective:
-
-To create an integrated and intuitive AI platform for Formula 1 enthusiasts, solving challenges such as:
-
-- **Fragmentation**: Navigating multiple platforms for ticket booking and subscriptions.
-- **Complexity**: Lack of centralized data and support services on existing platform.
-- **User Experience**: Need of robust service for F1 history, race analysis and statistics.
-
-#### Goals:
-
-- Build a **unified platform** for accessing various F1 services.
-- Implement **AI agents** to enhance user experience by automating ticket booking, customer support, and providing personalized assistance.
-- Enable **real-time analysis, statistics and support** for fans and customers.
-
-### **Desired Outcome**
-
-The F1\_Intelligence platform will allow users to:
-
-- **Book tickets**: For races with ease and convenience.
-- **Access history of F1 and lap by lap analysis**: Historical and real-time data in an intuitive format.
-- **Interact with AI agents**: For personalized customer support and service recommendations.
 
 ### **File Structure**
 
@@ -83,13 +121,14 @@ F1_Intelligence_FinalProject/
 ### **How It Works**
 
 1. **Ticket Booking**: Users can book tickets for F1 races directly through the platform.
-2. **F1 History Access**: Fans can explore real-time and historical race statistics using an intuitive interface.
-3. **Customer Support**: AI-powered agents assist users with queries, troubleshooting, and personalized recommendations.
-4. **Integration**: All services are unified in a single platform with centralized user data and preferences.
+2. **Lap-by-Lap Analysis**: Users can browse through previous races and get an overview of the entire race including major events, pitstops, scores, etc in a downloadable PDF format.
+3. **F1 History Access**: Fans can explore current and historical race statistics using an intuitive interface.
+4. **Customer Support**: AI-powered agents assist users with queries, troubleshooting, and personalized recommendations.
+5. **Integration**: All services are unified in a single platform with centralized user data and preferences.
 
 ### **Architecture Diagram**
 
-- **Architecture Diagram**: Demonstrates the unified, AI-powered platform.
+![F1_Architecture_Diagram](https://github.com/BigDataIA-Fall2024-TeamA6/F1_Intelligence_FinalProject/blob/main/architecture_diagram/F1_ArchDiag.jpeg)
 
 ### **Steps to Run this Application**
 
