@@ -60,6 +60,124 @@ def fetch_login_data():
         return None
         
 
+import mysql.connector
+import streamlit as st
+
+def fetch_ticket_info():
+    try:
+        # Connect to the database
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        
+        # Create a cursor to execute the query
+        cursor = cnx.cursor(dictionary=True)
+
+        # Execute query to fetch ticket info
+        cursor.execute("""
+            SELECT 
+                ticket_id, username, Country, Venue, TicketDate1, TicketDate2, TicketDate3, TicketCount, TicketPrice
+            FROM ticket_info
+        """)
+        
+        # Fetch all results
+        results = cursor.fetchall()
+
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+
+        # If no results found, show message
+        if not results:
+            st.write("No ticket information found.")
+            return None
+
+        # Return the ticket info
+        return results
+        
+    except Exception as e:
+        st.error(f"Database operation failed: {e}")
+        return None
+
+def get_helpdesk_tickets():
+    try:
+        # Connect to the MySQL database
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        
+        # Create cursor and execute the query to fetch helpdesk tickets
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                hdticket_id,
+                hdticket_summary,
+                chat_history,
+                username,
+                hdticket_status
+            FROM helpdesk_tickets
+        """)
+        
+        # Fetch all results
+        results = cursor.fetchall()
+        
+        # Transform results into a dictionary for each ticket
+        helpdesk_tickets = []
+        
+        for row in results:
+            ticket = {
+                "hdticket_id": row['hdticket_id'],
+                "hdticket_summary": row['hdticket_summary'],
+                "chat_history": row['chat_history'],  # This is a JSON string
+                "username": row['username'],
+                "hdticket_status": row['hdticket_status']
+            }
+            helpdesk_tickets.append(ticket)
+        
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+        
+        return helpdesk_tickets
+    
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
+
+def update_ticket_status(ticket_id, status):
+    try:
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        cursor = cnx.cursor()
+
+        # SQL query to update the ticket status
+        update_query = """
+            UPDATE helpdesk_tickets
+            SET hdticket_status = %s
+            WHERE hdticket_id = %s
+        """
+        cursor.execute(update_query, (status, ticket_id))
+
+        # Commit the transaction
+        cnx.commit()
+
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+
+    except Exception as e:
+        st.error(f"Failed to update ticket status: {e}")
+
 def main():
     st.set_page_config(page_title="F1 Employee Dashboard", initial_sidebar_state="collapsed", layout="wide" )
     co1, co2 = st.columns([6,1])
@@ -77,6 +195,7 @@ def main():
     # Custom CSS for F1 theme
     st.markdown("""
         <style>
+        
         .stTabs {
             background-color: #oooooo;
         }
@@ -86,6 +205,11 @@ def main():
             background-color: transparent;
         }
         
+        [data-testid="stTextInput"] > div > div > input {
+            background-color: #f0f0f0;  /* Light gray background */
+            color: black;  /* Black text */
+        }
+                
         .stTabs [data-baseweb="tab"] {
             background-color: rgba(255, 255, 255, 0.1);
             border: none;
@@ -111,7 +235,7 @@ def main():
         
         .stTabs [data-baseweb="tab"]:hover {
             background-color: rgba(255, 255, 255, 0.3);
-            color: white;
+            color: red;
             cursor: pointer;
         }
         </style>
@@ -140,16 +264,13 @@ def main():
     # Transactions data
     with tab2:
         st.header("Transaction History")
-        passes_data = {
-            'Year': ['2024', '2024', '2024'],
-            'Race': ['Yas Marina', 'Monaco GP', 'Silverstone'],
-            'Cost ($)': [150, 200, 175],
-            'No of Tickets': [10, 4, 2],
-            'Total ($)': [1500, 800, 350],
-            'Username': ['maxv33', 'lewish44', 'charleslec16']
-        }
-        transactions_df = pd.DataFrame(passes_data)
-        st.dataframe(transactions_df, use_container_width=True)
+
+        transactions_data = fetch_ticket_info()
+
+        if transactions_data:
+            df_transactions = pd.DataFrame(transactions_data)
+
+            st.table(df_transactions)
 
     # Support tickets data
     with tab3:
@@ -158,18 +279,13 @@ def main():
 
             with col2:
                 st.header("Support Tickets")
-                tickets_data = {
-                    'Complaint ID': ['F1-2024-001', 'F1-2024-002', 'F1-2024-003'],
-                    'Issue Summary': ['Refund for Miami GP', 'Seating Change Request', 'Parking Pass Issue'],
-                    'Chat History': [
-                        '{"messages": [{"role": "user", "content": "Need refund for 5 tickets $100 each"}, {"role": "agent", "content": "Processing your refund request"}]}',
-                        '{"messages": [{"role": "user", "content": "Need to change my seat"}, {"role": "agent", "content": "We can help with that"}]}',
-                        '{"messages": [{"role": "user", "content": "Parking pass not received"}]}'
-                    ],
-                    'Username': ['Jon', 'Vismay', 'MaxV33'],
-                    'Status': ['Pending ⏳', 'Approved ✅', 'In Progress 🔄']
-                }
-                tickets_df = pd.DataFrame(tickets_data)
+
+                tickets_data = get_helpdesk_tickets()
+
+                if tickets_data:
+                    tickets_df = pd.DataFrame(tickets_data)
+
+                    
 
                 # Add selection column
                 if 'selected_index' not in st.session_state:
@@ -182,7 +298,7 @@ def main():
                 selected_row_index = st.selectbox(
                     "Select a ticket to update:",
                     options=list(range(len(tickets_df))),
-                    format_func=lambda x: f"{tickets_df.iloc[x]['Complaint ID']} - {tickets_df.iloc[x]['Issue Summary']}"
+                    format_func=lambda x: f"{tickets_df.iloc[x]['hdticket_id']} - {tickets_df.iloc[x]['hdticket_summary']}"
                 )
 
                 # Update button
@@ -213,26 +329,29 @@ def main():
                     st.markdown('<div>', unsafe_allow_html=True)
                     
                     # Create text input fields for editing
-                    complaint_id = st.text_input("Complaint ID", selected_row['Complaint ID'])
-                    issue_summary = st.text_input("Issue Summary", selected_row['Issue Summary'])
-                    username = st.text_input("Username", selected_row['Username'])
+                    complaint_id = st.text_input("Complaint ID", selected_row['hdticket_id'])
+                    issue_summary = st.text_input("Issue Summary", selected_row['hdticket_summary'])
+                    username = st.text_input("Username", selected_row['username'])
                     status = st.selectbox(
                         "Status",
-                        ['Pending ⏳', 'Approved ✅', 'In Progress 🔄'],
-                        index=['Pending ⏳', 'Approved ✅', 'In Progress 🔄'].index(selected_row['Status'])
+                        ['Pending', 'Approved'],
+                        index=['Pending', 'Approved'].index(selected_row['hdticket_status'])
                     )
+
                     
                     # Add save button for changes
                     if st.button("Save Changes"):
-                        # Update the data in the DataFrame (or your database)
-                        tickets_df.at[st.session_state.selected_index, 'Complaint ID'] = complaint_id
-                        tickets_df.at[st.session_state.selected_index, 'Issue Summary'] = issue_summary
-                        tickets_df.at[st.session_state.selected_index, 'Username'] = username
-                        tickets_df.at[st.session_state.selected_index, 'Status'] = status
+                        # Update the DataFrame
+                        tickets_df.at[st.session_state.selected_index, 'hdticket_id'] = complaint_id
+                        tickets_df.at[st.session_state.selected_index, 'hdticket_summary'] = issue_summary
+                        tickets_df.at[st.session_state.selected_index, 'username'] = username
+                        tickets_df.at[st.session_state.selected_index, 'hdticket_status'] = status
+
+                        # Save changes to the database
+                        update_ticket_status(complaint_id, status)
 
                         st.success("Changes saved successfully!")
-                    
-                    # Close the styled div
+
                     st.markdown('</div>', unsafe_allow_html=True)
                     
 if __name__ == "__main__":
