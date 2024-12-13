@@ -1,5 +1,6 @@
 import streamlit as st
 import mysql.connector
+import pandas as pd
 
 def get_user_info(username):
     try:
@@ -19,6 +20,118 @@ def get_user_info(username):
         cursor.close()
         cnx.close()
         return user_info
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        return None
+
+def fetch_ticket_info(username):
+    try:
+        # Connect to the database
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        
+        # Create a cursor to execute the query
+        cursor = cnx.cursor(dictionary=True)
+
+        # Execute query to fetch ticket info
+        cursor.execute("""
+            SELECT 
+                ticket_id, username, Country, Venue, TicketDate1, TicketDate2, TicketDate3, TicketCount, TicketPrice, status
+            FROM ticket_info
+            WHERE username = %s
+        """, (username,))
+        
+        # Fetch all results
+        results = cursor.fetchall()
+
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+
+        # If no results found, show message
+        if not results:
+            st.write("No ticket information found.")
+            return None
+
+        # Return the ticket info
+        return results
+        
+    except Exception as e:
+        st.error(f"Database operation failed: {e}")
+        return None
+
+def get_support_tickets(username):
+    try:
+        # Connect to the MySQL database
+        cnx = mysql.connector.connect(
+            host="bdia-finalproject-instance.chk4u4ukiif4.us-east-1.rds.amazonaws.com",
+            user="admin",
+            password="amazonrds7245",
+            database="bdia_team6_finalproject_db"
+        )
+        
+        # Create cursor and execute the query to fetch support tickets
+        cursor = cnx.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                ticket_id,
+                customer_id,
+                request_type,
+                description,
+                status,
+                created_at,
+                resolved_at
+            FROM support_tickets
+            WHERE customer_id = %s
+        """, (username,))
+        
+        # Fetch all results
+        results = cursor.fetchall()
+        
+        # Transform results into a list of dictionaries for each ticket
+        support_tickets = []
+        for ticket in results:
+            support_tickets.append({
+                "ticket_id": ticket["ticket_id"],
+                "customer_id": ticket["customer_id"],
+                "request_type": ticket["request_type"],
+                "description": ticket["description"],
+                "status": ticket["status"],
+                "created_at": ticket["created_at"],
+                "resolved_at": ticket["resolved_at"]
+            })
+        
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+
+        return support_tickets
+
+    except Exception as e:
+        st.error(f"Failed to fetch support tickets: {e}")
+        return None
+
+        
+        for row in results:
+            ticket = {
+                "hdticket_id": row['hdticket_id'],
+                "hdticket_summary": row['hdticket_summary'],
+                "chat_history": row['chat_history'],  # This is a JSON string
+                "username": row['username'],
+                "hdticket_status": row['hdticket_status']
+            }
+            helpdesk_tickets.append(ticket)
+        
+        # Close the cursor and connection
+        cursor.close()
+        cnx.close()
+        
+        return helpdesk_tickets
+    
     except Exception as e:
         st.error(f"Database connection failed: {e}")
         return None
@@ -153,15 +266,13 @@ def user_profile_page():
 
     with tab2:
         st.header("My F1 Passes")
-        
+        username = st.session_state.get("username")
         # Create a DataFrame for the passes table
-        passes_data = {
-            'Year': ['2024', '2024', '2024'],
-            'Race': ['Yas Marina', 'Monaco GP', 'Silverstone'],
-            'Cost ($)': [150, 200, 175],
-            'No of Tickets': [10, 4, 2],
-            'Total ($)': [1500, 800, 350]
-        }
+        passes_data = fetch_ticket_info(username)
+
+        if passes_data:
+            df_transactions = pd.DataFrame(passes_data)
+
         
         # Display table with styling
         st.markdown("### Passes Summary")
@@ -183,24 +294,14 @@ def user_profile_page():
             </style>
         """, unsafe_allow_html=True)
         
-        st.dataframe(passes_data, hide_index=True, use_container_width=True)
+        st.dataframe(df_transactions, hide_index=True, use_container_width=True)
 
     
     with tab3:
         st.header("Support Tickets")
         
         # Create sample ticket data with chat history
-        tickets_data = {
-            'Ticket ID': ['#F1-2024-001', '#F1-2024-002', '#F1-2024-003'],
-            'Issue Summary': ['Seating Change Request', 'Parking Pass Issue', 'Ticket Transfer'],
-            'Chat History': [
-                '{"messages": [{"role": "user", "content": "Need to change my seat"}, {"role": "agent", "content": "We can help with that"}]}',
-                '{"messages": [{"role": "user", "content": "Parking pass not received"}]}',
-                '{"messages": [{"role": "user", "content": "Want to transfer my ticket"}]}'
-            ],
-            'Created': ['2024-02-01', '2024-02-15', '2024-02-20'],
-            'Status': ['Resolved ✅', 'In Progress 🔄', 'Pending ⏳']
-        }
+        tickets_data = tickets_data = get_support_tickets(username)
         
         # Display table with styling
         st.markdown("### Tickets Summary")
